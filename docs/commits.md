@@ -31,7 +31,7 @@ Use the area the change lives in.
 |---|---|
 | api | `backend/CreativeCollab.Api` |
 | tests | `backend/CreativeCollab.Api.Tests` |
-| web | Angular app, once `frontend/` exists |
+| web | Angular app in `frontend/` |
 | docs | Documentation |
 | mcp | `.mcp.json` and `.cursor/mcp.json` |
 

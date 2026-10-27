@@ -2,26 +2,89 @@
 
 CreativeCollab is one API and one Angular app. The API owns the Creative. The browser owns the Draft. A save sends the Version the Collaborator loaded. The API accepts it or returns a Conflict.
 
-This page separates what the repository runs today from what [PLAN.md](../PLAN.md) still requires. A diagram of the target is not a claim that the target is built.
+The diagrams below are the system that runs today. The rules under them are the ones the code follows. [PLAN.md](../PLAN.md) records why those rules were chosen.
 
-## What runs today
+## The running system
 
+Two browsers can open the same Creative. Each one talks to the same API. The API is the only writer of the Creative.
+
+```mermaid
+flowchart LR
+  Browser["Browser\nAngular 22\nlocalhost:4200"]
+  API["API\n.NET 10\nlocalhost:5114"]
+  DB[("SQLite\ncreativecollab.db")]
+
+  Browser -->|"HTTP\n/api/creatives"| API
+  Browser -->|"SignalR\n/hubs/creatives"| API
+  API --> DB
 ```
-HTTP client
-    │
-    ▼
-Minimal API  /api/creatives
-    │  list, get, create, update
-    ▼
-CreativeService
-    │
-    ├──▶ IHubContext<CreativeHub> ──▶ SignalR  /hubs/creatives  (PresenceTracker)
-    ▼
-EfCreativeRepository
-    │
-    ▼
-SQLite  creativecollab.db
+
+| Part | What it is |
+|---|---|
+| Browser | One Collaborator's Angular app. It keeps the Draft, the Display name, and the open SignalR connection. A second tab is a second browser in this picture, and Presence counts it separately |
+| API | The only process that accepts a save, decides a Conflict, checks an image URL, and tells other open sessions what happened |
+| SQLite | The Creative rows. `creativecollab.db` sits next to the API project and is gitignored. Version is the concurrency token. Development migrates and, when the table is empty, seeds three Creatives |
+
+Inside the API, a save goes through the service. Endpoints do not hold the rules.
+
+```mermaid
+flowchart TB
+  Endpoints["CreativeEndpoints\nlist, get, create, update"]
+  Service["CreativeService\nVersion, image check, save, broadcast"]
+  Repo["EfCreativeRepository"]
+  Images["ImageUrlValidator"]
+  Hub["CreativeHub\n/hubs/creatives"]
+  Presence["PresenceTracker\nin memory, this process only"]
+  DB[("creativecollab.db")]
+
+  Endpoints --> Service
+  Service --> Repo
+  Service --> Images
+  Service --> Hub
+  Hub --> Presence
+  Repo --> DB
 ```
+
+| Part | What it is |
+|---|---|
+| CreativeEndpoints | The HTTP surface. It turns a result into 200, 201, 400, 404, or 409 |
+| CreativeService | The rules. It creates at Version 1, rejects a stale Version, increments Version on a successful save, and broadcasts after that save |
+| EfCreativeRepository | EF Core 10. A lost race becomes `DbUpdateConcurrencyException`, which the service reports as the same Conflict |
+| ImageUrlValidator | The outbound check for a new or changed image URL. Public addresses only, no redirects, 3 seconds, `image/*` only |
+| CreativeHub | The real-time group `creative-{id}`. Join and leave announce Presence. A successful update pushes `CreativeUpdated` |
+| PresenceTracker | Who has the Creative open, one Display name per connection. Lost on restart. One API process only |
+
+## A save
+
+The form never talks to the API. The edit page asks the store to save. The store sends the Version the Collaborator loaded.
+
+```mermaid
+sequenceDiagram
+  participant Form as Creative form
+  participant Store as CreativeStore
+  participant API as CreativeEndpoints
+  participant Svc as CreativeService
+  participant DB as SQLite
+  participant Hub as CreativeHub
+
+  Form->>Store: Draft and the loaded Version
+  Store->>API: PUT /api/creatives/{id}
+  API->>Svc: UpdateAsync
+  alt Version still matches
+    Svc->>DB: increment Version and save
+    Svc->>Hub: CreativeUpdated to creative-{id}
+    API-->>Store: 200, the saved Creative
+  else Version moved on, or the race was lost
+    API-->>Store: 409, current
+    Note over Store,Form: The Draft stays. Load latest, or Keep my edits
+  end
+```
+
+Load latest discards the Draft and shows `current`. Keep my edits is a Rebase: changed fields keep the Draft, unchanged fields take `current`, and the store saves again with `current`'s Version.
+
+A `CreativeUpdated` event for this Creative reaches every open edit page, including the one that just saved. A clean form adopts it. A dirty Draft stays, and the page offers to load the latest. The list page is not on the hub.
+
+## API, file by file
 
 | Piece | Where | Behaviour |
 |---|---|---|
@@ -47,29 +110,9 @@ dotnet test backend/CreativeCollab.slnx
 dotnet run --project backend/CreativeCollab.Api
 ```
 
-## Target shape
+## Rules
 
-The plan adds the pieces below in order. Each one stays behind the service. Endpoints stay thin.
-
-```
-Angular (localhost:4200)
-    CreativesApi          HTTP
-    CreativeStore         Signals: list, selected, loading, error, conflict
-    CreativeHubService    SignalR
-            │
-            ▼
-API
-    ValidationFilter          400
-    CreativeService
-        pre-check Version
-        increment and save
-        broadcast CreativeUpdated
-            │
-            ├── EF Core + SQLite (creativecollab.db)
-            ├── IHubContext<CreativeHub>     group creative-{id}
-            ├── Presence tracker             in-memory, one process
-            └── ImageUrlValidator            HEAD, then a ranged GET
-```
+Endpoints stay thin. The rules live in the service, the store, and the hub client.
 
 | Concern | Rule |
 |---|---|
@@ -83,7 +126,55 @@ API
 
 ## Frontend today
 
-`frontend/` is an Angular 22 app (standalone, Signals, no NgRx). Angular 22 makes OnPush the default, so no component sets it. Tests run on Vitest through `ng test`, with HTTP mocked by `HttpTestingController`, so no API is needed. The API is called directly at `http://localhost:5114` (`core/api-config.ts`).
+`frontend/` is an Angular 22 app (standalone, Signals, no NgRx). Angular 22 makes OnPush the default, so no component sets it. Tests run on Vitest through `ng test`, with HTTP mocked by `HttpTestingController`, so no API is needed. There is no end-to-end target. The API is called directly at `http://localhost:5114` (`core/api-config.ts`).
+
+Routes: `/creatives` (list), `/creatives/new`, and `/creatives/:id` (the same edit page). The page is the controller. The store, the API client, and the hub client are the model. The components under them are views: they take inputs and emit outputs, and they do not call the API.
+
+```mermaid
+flowchart TB
+  subgraph view [Views]
+    List["creative-list"]
+    Form["creative-form"]
+    Banner["conflict-banner"]
+    Bar["presence-bar"]
+    Notice["remote-update-notice"]
+    Prompt["display-name-prompt"]
+  end
+  subgraph pages [Pages]
+    ListPage["CreativeListPage"]
+    EditPage["CreativeEditPage"]
+  end
+  subgraph model [Model]
+    Store["CreativeStore"]
+    Http["CreativesApi"]
+    HubSvc["CreativeHubService"]
+    Name["DisplayName"]
+  end
+
+  ListPage --> List
+  ListPage --> Store
+  EditPage --> Form
+  EditPage --> Banner
+  EditPage --> Bar
+  EditPage --> Notice
+  EditPage --> Store
+  EditPage --> HubSvc
+  Prompt --> Name
+  Store --> Http
+```
+
+| Part | What it is |
+|---|---|
+| CreativeListPage | Loads the list and navigates to a Creative. It does not join the hub |
+| CreativeEditPage | Loads one Creative or starts a new one, joins its group, and decides what the views are allowed to show |
+| CreativeStore | Signals for the list, the selected Creative, loading, saving, errors, the Conflict, and a remote update that arrived while the form was dirty |
+| CreativesApi | HTTP for the four endpoints. It attaches the Display name and, on update, the loaded Version |
+| CreativeHubService | The SignalR connection. `presence` is who has this Creative open. `updated` is `CreativeUpdated` |
+| DisplayName | The name in localStorage. The prompt is the view; this service is the memory |
+| creative-form | The Draft. It emits field changes and resets only when handed a different Creative |
+| conflict-banner | Load latest, or Keep my edits |
+| presence-bar | The sentence of Display names. Empty means the bar renders nothing |
+| remote-update-notice | The offer to load a newer Creative without throwing away a dirty Draft |
 
 ```bash
 cd frontend && npm install && npm start     # http://localhost:4200
@@ -117,7 +208,7 @@ While the form has a Draft, a `CreativeUpdated` event shows a non-blocking notic
 
 No second backend project. The test project is the only sibling of the API.
 
-## Failure rules already fixed
+## Failure rules
 
 | Situation | Response |
 |---|---|

@@ -2,14 +2,14 @@
 
 A small real-time collaborative editor for ad creatives. It handles concurrent edits with optimistic concurrency and SignalR, and it demonstrates senior-level code-quality patterns.
 
-Status: **plan agreed. Steps 1–6 (list, get, create, update with 409, SQLite, SignalR, image check, error handling and CORS) are in `backend/`. Steps 7–8 are not started.** The map of what that means is [docs/architecture.md](docs/architecture.md). Done versus remaining is [docs/DoD.md](docs/DoD.md).
+Status: **steps 1–8 are in the tree.** The map of the running system is [docs/architecture.md](docs/architecture.md). Done versus left out is [docs/DoD.md](docs/DoD.md). The sections below are the rules those steps were built to.
 
 ## Decisions (from design review)
 
 ### Repo and tooling
 - Monorepo: `/backend` and `/frontend`.
 - Backend is one API project plus one test project, organised in folders (`Endpoints/`, `Services/`, `Data/`, `Hubs/`, `Validation/`). No multi-project clean-architecture split.
-- .NET SDK 10.0.x is installed. Node 24 is the nvm default, which is what Angular 22 needs. The frontend is still not scaffolded. The backend is built first so nothing is blocked.
+- .NET SDK 10.0.x is installed. Node 24 is the nvm default, which is what Angular 22 needs. The Angular app is in `frontend/`.
 - No commits are made unless the user asks.
 - Tests are written alongside each step, not strict TDD.
 
@@ -71,7 +71,7 @@ Status: **plan agreed. Steps 1–6 (list, get, create, update with 409, SQLite, 
   - `CreativeStore` holds Signals state: `creatives`, `selected`, `loading`, `error`, `conflict`.
   - `CreativeHubService` wraps the SignalR connection.
 - Smart containers: `CreativeListPage` and `CreativeEditPage`. They are OnPush and use `takeUntilDestroyed`.
-- Presentational components: `creative-list`, `creative-form` and `presence-bar`. They use `input()` and `output()` only.
+- Presentational components: `creative-list`, `creative-form`, `presence-bar`, `conflict-banner`, `remote-update-notice`, and `display-name-prompt`. They use `input()` and `output()` only.
 - No NgRx, and no logic in templates.
 - **409 UX:** the draft stays in the form. A banner says "X saved a newer version" with two actions: **Load latest** (discard my edits) and **Keep my edits** (rebase: only the fields the user actually changed are re-applied onto the latest version, other fields take the latest server values, then save again). There is no merge or diff UI.
 - **Live update while dirty:** a `CreativeUpdated` event never overwrites the draft. It shows a non-blocking "updated by X, load latest?" notice and tracks the new server version. If the form is clean, it updates silently.
@@ -83,6 +83,8 @@ Status: **plan agreed. Steps 1–6 (list, get, create, update with 409, SQLite, 
 - No end-to-end tests.
 
 ## Build order
+
+These steps are the order the app was built. The in-memory store from step 1 was replaced by SQLite in step 3.
 
 1. **Backend scaffold:** `backend/CreativeCollab.Api` and `backend/CreativeCollab.Api.Tests`, with the in-memory store behind a repository interface. This gives list / get / create / update.
 2. **Concurrency:** the Version field and 409, including `current` in the body.

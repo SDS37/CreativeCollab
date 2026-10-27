@@ -6,7 +6,7 @@ Read in this order if you are new. Open one file if you are about to change that
 
 | Document | What it decides |
 |---|---|
-| [Architecture](architecture.md) | What runs today, and the shape the rest of the build is aiming at |
+| [Architecture](architecture.md) | What runs today, and what each part is |
 | [Definition of Done](DoD.md) | When the app is complete, and which boxes the code already checks |
 | [Plan](../PLAN.md) | The agreed build order and the rules for each step |
 | [Architecture decision records](architecture-decision-records.md) | Choices already made, with the files that hold them |
@@ -17,6 +17,4 @@ Agent conventions (issue tracker, triage labels, how to read the glossary) live 
 
 ## Status
 
-The API walking skeleton is in `backend/`. `GET` and `POST /api/creatives` work. Creatives are stored in memory. Create is validated with FluentValidation. A new Creative starts at Version 1 and records the Display name.
-
-Update, Conflict (409), SQLite, SignalR, Presence, the image check, and the Angular app are specified in the [plan](../PLAN.md) and are not in the tree yet.
+The plan is in the tree. The API lists, gets, creates, and updates Creatives, rejects a stale Version with 409, stores them in SQLite, broadcasts a save, and tracks Presence. The Angular app lists, creates, and edits, and it keeps a Draft across a Conflict and a live update. What is deliberately left out is in the [Definition of Done](DoD.md). The picture of the running system is the [architecture](architecture.md).

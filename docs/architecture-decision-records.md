@@ -11,6 +11,6 @@ The longer design notes that are not yet a single decision (image checks, the An
 
 ## How to read them
 
-ADR 0001 is why a save carries a Version instead of a lock or a merge. The Conflict UX (Load latest, Keep my edits) follows from that choice. The 409 body and the EF token are the implementation, specified in the [plan](../PLAN.md) and not built yet.
+ADR 0001 is why a save carries a Version instead of a lock or a merge. The Conflict UX (Load latest, Keep my edits) follows from that choice. The 409 body and the EF concurrency token are that decision in the code, described in the [architecture](architecture.md).
 
 ADR 0002 is why Presence is a dictionary in one process. Live updates share that limit: a second instance would split both, until a backplane exists.

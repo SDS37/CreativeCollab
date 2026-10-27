@@ -13,7 +13,7 @@ Where each reviewed pattern lives in the code. Line numbers are from the commit 
 | Optimistic concurrency | `Data/CreativeDbContext.cs:24`, `Services/CreativeService.cs:40-75`, `Data/EfCreativeRepository.cs:39` | `Version` is a concurrency token. A stale pre-check and a lost race (`DbUpdateConcurrencyException`) produce the same 409. See ADR 0001 |
 | Validation | `Validation/ValidationFilter.cs` | One generic endpoint filter, FluentValidation rules shared by create and update |
 | Error handling | `Infrastructure/GlobalExceptionHandler.cs` | `IExceptionHandler`. 500s carry no detail. Binding errors keep their 4xx |
-| CORS | `Program.cs:24-28` | Explicit origins from `Cors:AllowedOrigins`, with credentials (SignalR needs them), never a wildcard |
+| CORS | `Program.cs:23-28` | Explicit origins from `Cors:AllowedOrigins`, with credentials (SignalR needs them), never a wildcard |
 | Injected clock | `Program.cs:13`, `Services/CreativeService.cs` | `TimeProvider`, replaced by `FakeTimeProvider` in tests |
 | SignalR and Presence | `Hubs/CreativeHub.cs`, `Hubs/PresenceTracker.cs`, `Program.cs:44` | One group per Creative. Presence is in memory, keyed by connection id. See ADR 0002 |
 | SSRF guard | `Services/ImageUrlValidator.cs`, `Services/PublicAddress.cs` | Resolve the host, refuse non-public addresses, no redirects, 3 s timeout, `image/*` only |
@@ -22,9 +22,9 @@ Where each reviewed pattern lives in the code. Line numbers are from the commit 
 
 | Pattern | Where | What to look at |
 |---|---|---|
-| Signals state | `core/creative-store.ts` | `creatives`, `selected`, `loading`, `error`, `conflict` as Signals |
+| Signals state | `core/creative-store.ts` | `creatives`, `selected`, `loading`, `saving`, `error`, `conflict`, `remoteUpdate` as Signals |
 | OnPush | every component | Angular 22 makes OnPush the default, so components do not set it explicitly |
-| Subscription hygiene | `creatives/creative-edit-page/creative-edit-page.ts:57,70,73`, `creatives/creative-form/creative-form.ts:52` | `takeUntilDestroyed()` on every subscription, and the hub is disposed in `DestroyRef.onDestroy` |
+| Subscription hygiene | `creatives/creative-edit-page/creative-edit-page.ts:60,71,75`, `creatives/creative-form/creative-form.ts:51,55` | Route and hub subscriptions use `takeUntilDestroyed()`. The form adopts a new Creative in an `effect()`. The hub is disposed in `DestroyRef.onDestroy` |
 | Separation of concerns | `core/` (services) versus `creatives/*` | Containers (`creative-list-page`, `creative-edit-page`) talk to the store. Presentational components (`creative-form`, `creative-list`, `presence-bar`, `conflict-banner`, `remote-update-notice`) use `input()` and `output()` only |
 | Conflict and Rebase | `core/rebase.ts`, `creatives/conflict-banner` | Only fields the Collaborator changed are re-applied onto `current` |
 | Live update versus Draft | `core/creative-store.ts`, `creatives/remote-update-notice` | A dirty Draft is never overwritten |
