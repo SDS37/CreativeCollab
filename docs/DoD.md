@@ -10,9 +10,9 @@ The app is done when a colleague can run two browsers against one API and every 
 - [x] `POST /api/creatives` returns 201, Version 1, and the Display name in `updatedBy`
 - [x] Create rejects a missing required field, an over-long field, and an image URL that is not absolute http or https, as 400 `ValidationProblemDetails`
 - [x] `PUT` (or the planned update route) requires the loaded Version and a Display name
-- [ ] A stale Version returns 409 with the latest Creative in `current`, including when the database reports a concurrency failure
-- [ ] Creatives survive a restart in `creativecollab.db`. Development applies migrations on startup. An empty table is seeded
-- [ ] `updatedAt` comes from an injected `TimeProvider`
+- [x] A stale Version returns 409 with the latest Creative in `current`, including when the database reports a concurrency failure
+- [x] Creatives survive a restart in `creativecollab.db`. Development applies migrations on startup. An empty table is seeded
+- [x] `updatedAt` comes from an injected `TimeProvider`
 - [ ] Saving broadcasts `CreativeUpdated` to group `creative-{id}` on `/hubs/creatives`
 - [ ] Presence is the in-memory set of connections that have joined that Creative, and a dropped connection emits `UserLeft`
 - [ ] An image URL that changes is checked with a short HEAD (then a ranged GET). A non-image, a private address, or a network failure is 400

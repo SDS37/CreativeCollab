@@ -1,16 +1,23 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Time.Testing;
 
 namespace CreativeCollab.Api.Tests;
 
-public class CreativesApiTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+public sealed class CreativesApiTests : IDisposable
 {
-    private HttpClient NewClient() => factory.WithWebHostBuilder(_ => { }).CreateClient();
+    private readonly List<ApiFactory> _hosts = [];
+
+    private HttpClient NewClient(Action<IServiceCollection>? configure = null)
+    {
+        var host = new ApiFactory(configure);
+        _hosts.Add(host);
+        return host.CreateClient();
+    }
+
+    public void Dispose() => _hosts.ForEach(h => h.Dispose());
 
     [Fact]
     public async Task List_returns_200_with_empty_array_when_no_creatives_exist()
@@ -79,8 +86,7 @@ public class CreativesApiTests(WebApplicationFactory<Program> factory) : IClassF
     public async Task List_is_sorted_by_most_recently_updated_first()
     {
         var time = new FakeTimeProvider(DateTimeOffset.Parse("2026-01-01T00:00:00Z"));
-        var client = factory.WithWebHostBuilder(b => b.ConfigureServices(s =>
-            s.AddSingleton<TimeProvider>(time))).CreateClient();
+        var client = NewClient(s => s.AddSingleton<TimeProvider>(time));
 
         await client.PostAsJsonAsync("/api/creatives", ValidCreative("older"));
         time.Advance(TimeSpan.FromMinutes(5));
@@ -280,8 +286,7 @@ public class CreativesApiTests(WebApplicationFactory<Program> factory) : IClassF
     public async Task Update_sets_updated_at_from_the_clock()
     {
         var time = new FakeTimeProvider(DateTimeOffset.Parse("2026-01-01T00:00:00Z"));
-        var client = factory.WithWebHostBuilder(b => b.ConfigureServices(s =>
-            s.AddSingleton<TimeProvider>(time))).CreateClient();
+        var client = NewClient(s => s.AddSingleton<TimeProvider>(time));
         var id = (await CreateAsync(client)).GetProperty("id").GetGuid();
         time.Advance(TimeSpan.FromHours(1));
 

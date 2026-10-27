@@ -16,19 +16,23 @@ Minimal API  /api/creatives
 CreativeService
     │
     ▼
-InMemoryCreativeRepository
+EfCreativeRepository
+    │
+    ▼
+SQLite  creativecollab.db
 ```
 
 | Piece | Where | Behaviour |
 |---|---|---|
-| Host | `backend/CreativeCollab.Api/Program.cs` | Wires TimeProvider, the repository, the service, and FluentValidation |
+| Host | `backend/CreativeCollab.Api/Program.cs` | Wires TimeProvider, the DbContext, the repository, the service, and FluentValidation. In Development only, applies migrations and seeds |
 | HTTP | `Endpoints/CreativeEndpoints.cs` | `GET /api/creatives`, `GET /api/creatives/{id}`, `POST /api/creatives`, `PUT /api/creatives/{id}` |
 | Rules | `Services/CreativeService.cs` | Creates a Creative at Version 1. Update checks the supplied Version, increments it, stamps `updatedAt` from TimeProvider, records the Display name. A stale Version, or a store that rejects the compare-and-swap, is a Conflict carrying the latest Creative |
-| Store | `Data/InMemoryCreativeRepository.cs` | Process memory. Update is a compare-and-swap on the Version. The list is most recently updated first. Restart drops every Creative |
+| Store | `Data/EfCreativeRepository.cs`, `Data/CreativeDbContext.cs` | EF Core 10 on SQLite. The connection string `ConnectionStrings:Creatives` defaults to `Data Source=creativecollab.db` (gitignored). Version is a concurrency token, so a save that loses a race raises `DbUpdateConcurrencyException`, which the repository reports as not updated and the service turns into the same Conflict. `updatedAt` is stored as UTC ticks so it sorts. Scoped lifetime |
+| Migrations and seed | `Data/Migrations/`, `Data/DatabaseInitializer.cs` | Development only: migrate on startup, then add three Creatives with empty `updatedBy` if the table is empty |
 | Validation | `Validation/` | Create and update share one rule set; update also requires Version >= 1. Empty required fields, max lengths, and a non-http(s) image URL return 400 `ValidationProblemDetails` |
-| Tests | `backend/CreativeCollab.Api.Tests` | xUnit and `WebApplicationFactory`. A fake TimeProvider controls sort order |
+| Tests | `backend/CreativeCollab.Api.Tests` | xUnit and `WebApplicationFactory` on in-memory SQLite with the real migrations. A fake TimeProvider controls time. A save interceptor stages a genuine race. A file database and two hosts prove a restart |
 
-A stale update returns 409 `ProblemDetails` with the latest Creative in `current`. There is no database file, no hub, and no `frontend/` directory.
+A stale update returns 409 `ProblemDetails` with the latest Creative in `current`. There is no hub, and no `frontend/` directory.
 
 Development listens on `http://localhost:5114` (`Properties/launchSettings.json`).
 
