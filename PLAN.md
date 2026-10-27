@@ -2,7 +2,7 @@
 
 A small real-time collaborative editor for ad creatives. It handles concurrent edits with optimistic concurrency and SignalR, and it demonstrates senior-level code-quality patterns.
 
-Status: **plan agreed. Steps 1–3 (list, get, create, update with 409, SQLite) are in `backend/`. Steps 4–8 are not started.** The map of what that means is [docs/architecture.md](docs/architecture.md). Done versus remaining is [docs/DoD.md](docs/DoD.md).
+Status: **plan agreed. Steps 1–6 (list, get, create, update with 409, SQLite, SignalR, image check, error handling and CORS) are in `backend/`. Steps 7–8 are not started.** The map of what that means is [docs/architecture.md](docs/architecture.md). Done versus remaining is [docs/DoD.md](docs/DoD.md).
 
 ## Decisions (from design review)
 

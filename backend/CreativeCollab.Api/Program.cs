@@ -1,5 +1,6 @@
 using CreativeCollab.Api.Data;
 using CreativeCollab.Api.Endpoints;
+using CreativeCollab.Api.Hubs;
 using CreativeCollab.Api.Infrastructure;
 using CreativeCollab.Api.Services;
 using CreativeCollab.Api.Validation;
@@ -25,6 +26,8 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
     .AllowAnyHeader()
     .AllowAnyMethod()
     .AllowCredentials())); // SignalR needs credentials, so the origin list is explicit, never a wildcard
+builder.Services.AddSignalR();
+builder.Services.AddSingleton<PresenceTracker>();
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddValidatorsFromAssemblyContaining<CreateCreativeRequestValidator>();
@@ -38,6 +41,7 @@ if (app.Environment.IsDevelopment())
     await app.InitializeDatabaseAsync();
 
 app.MapCreativeEndpoints();
+app.MapHub<CreativeHub>("/hubs/creatives");
 
 app.Run();
 

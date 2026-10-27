@@ -1,9 +1,16 @@
 using CreativeCollab.Api.Data;
+using CreativeCollab.Api.Hubs;
 using CreativeCollab.Api.Models;
+using Microsoft.AspNetCore.SignalR;
 
 namespace CreativeCollab.Api.Services;
 
-public sealed class CreativeService(ICreativeRepository repository, IImageUrlValidator imageValidator, TimeProvider time)
+public sealed class CreativeService(
+    ICreativeRepository repository,
+    IImageUrlValidator imageValidator,
+    IHubContext<CreativeHub> hub,
+    TimeProvider time,
+    ILogger<CreativeService> logger)
 {
     public Task<IReadOnlyList<Creative>> ListAsync(CancellationToken ct) => repository.ListAsync(ct);
 
@@ -57,7 +64,10 @@ public sealed class CreativeService(ICreativeRepository repository, IImageUrlVal
         };
 
         if (await repository.TryUpdateAsync(updated, existing.Version, ct))
+        {
+            await BroadcastUpdateAsync(updated);
             return new UpdateResult.Updated(updated);
+        }
 
         // Lost a race with another save: report the latest copy.
         return await repository.GetAsync(id, ct) is { } current
@@ -66,4 +76,22 @@ public sealed class CreativeService(ICreativeRepository repository, IImageUrlVal
     }
 
     private static string? NormalizeImageUrl(string? imageUrl) => string.IsNullOrEmpty(imageUrl) ? null : imageUrl;
+
+    /// <summary>
+    /// Pushes the saved Creative to everyone who has it open, the sender included (their client ignores a
+    /// Version it already has). The save is already committed, so a failed push is logged, not surfaced,
+    /// and it is deliberately not tied to the request's cancellation.
+    /// </summary>
+    private async Task BroadcastUpdateAsync(Creative creative)
+    {
+        try
+        {
+            await hub.Clients.Group(CreativeHub.GroupName(creative.Id))
+                .SendAsync(CreativeHub.Events.CreativeUpdated, creative, CancellationToken.None);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Saved Creative {CreativeId} v{Version} but could not broadcast it", creative.Id, creative.Version);
+        }
+    }
 }
