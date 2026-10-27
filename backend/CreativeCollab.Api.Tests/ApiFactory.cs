@@ -17,8 +17,12 @@ namespace CreativeCollab.Api.Tests;
 /// </summary>
 public sealed class ApiFactory(
     Action<IServiceCollection>? configureServices = null,
+    Action<IWebHostBuilder>? configureWebHost = null,
     params IInterceptor[] interceptors) : WebApplicationFactory<Program>
 {
+    /// <summary>Hosting environment. "Testing" by default; "Development" also runs the migrate-and-seed step.</summary>
+    public string Environment { get; init; } = "Testing";
+
     // In-memory SQLite lives only as long as its connection, so one connection is held open for the host.
     private readonly SqliteConnection _connection = OpenConnection();
 
@@ -31,7 +35,7 @@ public sealed class ApiFactory(
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseEnvironment("Testing");
+        builder.UseEnvironment(Environment);
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<DbContextOptions<CreativeDbContext>>();
@@ -39,6 +43,7 @@ public sealed class ApiFactory(
             services.AddDbContext<CreativeDbContext>(o => o.UseSqlite(_connection).AddInterceptors(interceptors));
             configureServices?.Invoke(services);
         });
+        configureWebHost?.Invoke(builder);
     }
 
     protected override IHost CreateHost(IHostBuilder builder)

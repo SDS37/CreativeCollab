@@ -35,7 +35,7 @@ public sealed class ConcurrencyRaceTests
     public async Task A_save_that_loses_a_race_at_the_database_returns_409_with_the_winners_creative()
     {
         var rival = new RivalSaveInterceptor();
-        using var host = new ApiFactory(configureServices: null, rival);
+        using var host = new ApiFactory(interceptors: rival);
         var client = host.CreateClient();
         var created = await (await client.PostAsJsonAsync("/api/creatives",
             new { name = "Original", headline = "h", body = "b", cta = "c", displayName = "Cy" }))
