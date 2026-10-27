@@ -1,0 +1,14 @@
+@if (needsName()) {
+  <app-display-name-prompt [current]="displayName.value()" (confirmed)="confirm($event)" />
+} @else {
+  <header class="shell">
+    <strong>CreativeCollab</strong>
+    <span>
+      Signed in as {{ displayName.value() }}
+      <button type="button" class="change-name" (click)="startChange()">Change name</button>
+    </span>
+  </header>
+  <main>
+    <router-outlet />
+  </main>
+}
