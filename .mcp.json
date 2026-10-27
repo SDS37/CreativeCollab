@@ -57,9 +57,11 @@
     "sqlite": {
       "command": "uvx",
       "args": [
+        "--with",
+        "mcp[cli]<2",
         "mcp-server-sqlite",
         "--db-path",
-        "./creativecollab.db"
+        "./backend/CreativeCollab.Api/creativecollab.db"
       ]
     },
     "context7": {
