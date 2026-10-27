@@ -126,7 +126,7 @@ Endpoints stay thin. The rules live in the service, the store, and the hub clien
 
 ## Frontend today
 
-`frontend/` is an Angular 22 app (standalone, Signals, no NgRx). Angular 22 makes OnPush the default, so no component sets it. Tests run on Vitest through `ng test`, with HTTP mocked by `HttpTestingController`, so no API is needed. There is no end-to-end target. The API is called directly at `http://localhost:5114` (`core/api-config.ts`).
+`frontend/` is an Angular 22 app (standalone, Signals, no NgRx). Angular 22 makes OnPush the default, so no component sets it. Tests run on Vitest through `ng test`, with HTTP mocked by `HttpTestingController`, so no API is needed. Playwright in `e2e/` drives two browsers against the running API. The API is called directly at `http://localhost:5114` (`core/api-config.ts`).
 
 Routes: `/creatives` (list), `/creatives/new`, and `/creatives/:id` (the same edit page). The page is the controller. The store, the API client, and the hub client are the model. The components under them are views: they take inputs and emit outputs, and they do not call the API.
 

@@ -80,7 +80,7 @@ Status: **steps 1–8 are in the tree.** The map of the running system is [docs/
 ### Testing
 - Backend: xUnit integration tests (`WebApplicationFactory`, in-memory SQLite) for 404/400/409, the version increment, and the image validator (stubbed handler).
 - Frontend: a small number of service tests, using the runner Angular 22 scaffolds by default.
-- No end-to-end tests.
+- Playwright in `e2e/` runs two browsers against the API and the hub. CI runs that plus the backend and frontend unit tests.
 
 ## Build order
 

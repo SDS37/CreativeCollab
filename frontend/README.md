@@ -8,4 +8,4 @@ npm start    # http://localhost:4200
 npm test     # Vitest, HTTP and the hub mocked
 ```
 
-There is no end-to-end target. `ng e2e` is not wired up.
+The two-browser run lives in [`e2e/`](../e2e) and is what CI runs with Playwright. `ng e2e` is not wired up.
