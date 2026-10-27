@@ -177,8 +177,6 @@ export const CreativeSignalStore = signalStore(
   }),
 );
 
-export type CreativeSignalStore = InstanceType<typeof CreativeSignalStore>;
-
 /** The latest Creative carried by a 409, or null when the error is not a usable Conflict. */
 function conflictOf(error: unknown): Creative | null {
   if (!(error instanceof HttpErrorResponse) || error.status !== 409) {

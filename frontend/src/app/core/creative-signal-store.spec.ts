@@ -14,7 +14,7 @@ function creative(id: number, version = 1): Creative {
 }
 
 describe('CreativeSignalStore', () => {
-  let store: CreativeSignalStore;
+  let store: InstanceType<typeof CreativeSignalStore>;
   let http: HttpTestingController;
 
   beforeEach(() => {
