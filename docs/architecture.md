@@ -24,10 +24,11 @@ SQLite  creativecollab.db
 
 | Piece | Where | Behaviour |
 |---|---|---|
-| Host | `backend/CreativeCollab.Api/Program.cs` | Wires TimeProvider, the DbContext, the repository, the service, and FluentValidation. In Development only, applies migrations and seeds |
+| Host | `backend/CreativeCollab.Api/Program.cs` | Wires TimeProvider, the DbContext, the image-check client, the repository, the service, and FluentValidation. In Development only, applies migrations and seeds |
 | HTTP | `Endpoints/CreativeEndpoints.cs` | `GET /api/creatives`, `GET /api/creatives/{id}`, `POST /api/creatives`, `PUT /api/creatives/{id}` |
 | Rules | `Services/CreativeService.cs` | Creates a Creative at Version 1. Update checks the supplied Version, increments it, stamps `updatedAt` from TimeProvider, records the Display name. A stale Version, or a store that rejects the compare-and-swap, is a Conflict carrying the latest Creative |
 | Store | `Data/EfCreativeRepository.cs`, `Data/CreativeDbContext.cs` | EF Core 10 on SQLite. The connection string `ConnectionStrings:Creatives` defaults to `Data Source=creativecollab.db` (gitignored). Version is a concurrency token, so a save that loses a race raises `DbUpdateConcurrencyException`, which the repository reports as not updated and the service turns into the same Conflict. `updatedAt` is stored as UTC ticks so it sorts. Scoped lifetime |
+| Image check | `Services/ImageUrlValidator.cs`, `Services/PublicAddress.cs` | Typed client from `IHttpClientFactory` (pooled handler, no redirects, 3 s timeout from `ImageValidation:Timeout`). Runs on create and on update only when the image URL is new or changed, after the Version check. Resolves the host, refuses any non-public address, sends HEAD, then a one-byte ranged GET if HEAD is not successful. Only `image/*` passes. Every failure is a 400 on `imageUrl`. DNS rebinding is not fully mitigated: the host is resolved again when the client connects |
 | Errors | `Infrastructure/GlobalExceptionHandler.cs` | An unhandled exception is logged and answered as a 500 `ProblemDetails` with a generic title and no detail, in every environment. Request-binding errors such as malformed JSON keep their 4xx |
 | CORS | `Program.cs`, `Cors:AllowedOrigins` in `appsettings.json` | Default policy for `http://localhost:4200` with credentials. Any other origin gets no CORS headers |
 | Migrations and seed | `Data/Migrations/`, `Data/DatabaseInitializer.cs` | Development only: migrate on startup, then add three Creatives with empty `updatedBy` if the table is empty |
@@ -97,7 +98,7 @@ No second backend project. The test project is the only sibling of the API.
 | Unknown id | 404 |
 | Invalid create body | 400 `ValidationProblemDetails` |
 | Stale Version | 409, body includes `current` |
-| Image URL that is not a public image, once the checker exists | 400 |
+| Image URL that is not a public image | 400 on `imageUrl` |
 | Unexpected exception | 500 ProblemDetails with no internals |
 
 There is no delete.

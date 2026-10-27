@@ -18,8 +18,12 @@ public static class CreativeEndpoints
 
         group.MapPost("/", async (CreateCreativeRequest request, CreativeService service, CancellationToken ct) =>
         {
-            var creative = await service.CreateAsync(request, ct);
-            return Results.Created($"/api/creatives/{creative.Id}", creative);
+            return await service.CreateAsync(request, ct) switch
+            {
+                CreateResult.Created c => Results.Created($"/api/creatives/{c.Creative.Id}", c.Creative),
+                CreateResult.InvalidImage i => ImageProblem(i.Message),
+                _ => throw new InvalidOperationException("Unhandled create result."),
+            };
         }).AddEndpointFilter<ValidationFilter<CreateCreativeRequest>>();
 
         group.MapPut("/{id:guid}", async (Guid id, UpdateCreativeRequest request, CreativeService service, CancellationToken ct) =>
@@ -27,11 +31,15 @@ public static class CreativeEndpoints
             {
                 UpdateResult.Updated u => Results.Ok(u.Creative),
                 UpdateResult.Conflict c => ConflictResult(c.Current),
+                UpdateResult.InvalidImage i => ImageProblem(i.Message),
                 _ => Results.NotFound(),
             }).AddEndpointFilter<ValidationFilter<UpdateCreativeRequest>>();
 
         return app;
     }
+
+    private static IResult ImageProblem(string message) =>
+        Results.ValidationProblem(new Dictionary<string, string[]> { ["imageUrl"] = [message] });
 
     private static IResult ConflictResult(Creative current) =>
         Results.Problem(

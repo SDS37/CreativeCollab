@@ -15,7 +15,7 @@ The app is done when a colleague can run two browsers against one API and every 
 - [x] `updatedAt` comes from an injected `TimeProvider`
 - [ ] Saving broadcasts `CreativeUpdated` to group `creative-{id}` on `/hubs/creatives`
 - [ ] Presence is the in-memory set of connections that have joined that Creative, and a dropped connection emits `UserLeft`
-- [ ] An image URL that changes is checked with a short HEAD (then a ranged GET). A non-image, a private address, or a network failure is 400
+- [x] An image URL that changes is checked with a short HEAD (then a ranged GET). A non-image, a private address, or a network failure is 400
 - [ ] The Angular app lists, opens, creates, and edits a Creative. A Conflict leaves the Draft on screen and offers Load latest and Keep my edits
 - [ ] A `CreativeUpdated` event does not overwrite a dirty Draft
 - [ ] The root README is a runbook for the API and the Angular app

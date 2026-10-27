@@ -3,27 +3,31 @@ using CreativeCollab.Api.Models;
 
 namespace CreativeCollab.Api.Services;
 
-public sealed class CreativeService(ICreativeRepository repository, TimeProvider time)
+public sealed class CreativeService(ICreativeRepository repository, IImageUrlValidator imageValidator, TimeProvider time)
 {
     public Task<IReadOnlyList<Creative>> ListAsync(CancellationToken ct) => repository.ListAsync(ct);
 
     public Task<Creative?> GetAsync(Guid id, CancellationToken ct) => repository.GetAsync(id, ct);
 
-    public async Task<Creative> CreateAsync(CreateCreativeRequest request, CancellationToken ct)
+    public async Task<CreateResult> CreateAsync(CreateCreativeRequest request, CancellationToken ct)
     {
+        var imageUrl = NormalizeImageUrl(request.ImageUrl);
+        if (imageUrl is not null && await imageValidator.CheckAsync(imageUrl, ct) is { IsValid: false } bad)
+            return new CreateResult.InvalidImage(bad.Message!);
+
         var creative = new Creative(
             Id: Guid.NewGuid(),
             Name: request.Name!,
             Headline: request.Headline!,
             Body: request.Body!,
             Cta: request.Cta!,
-            ImageUrl: string.IsNullOrEmpty(request.ImageUrl) ? null : request.ImageUrl,
+            ImageUrl: imageUrl,
             Version: 1,
             UpdatedAt: time.GetUtcNow(),
             UpdatedBy: request.DisplayName!);
 
         await repository.AddAsync(creative, ct);
-        return creative;
+        return new CreateResult.Created(creative);
     }
 
     public async Task<UpdateResult> UpdateAsync(Guid id, UpdateCreativeRequest request, CancellationToken ct)
@@ -34,13 +38,19 @@ public sealed class CreativeService(ICreativeRepository repository, TimeProvider
         if (existing.Version != request.Version)
             return new UpdateResult.Conflict(existing);
 
+        // Only a new or changed image URL costs an outbound call.
+        var imageUrl = NormalizeImageUrl(request.ImageUrl);
+        if (imageUrl is not null && imageUrl != existing.ImageUrl
+            && await imageValidator.CheckAsync(imageUrl, ct) is { IsValid: false } bad)
+            return new UpdateResult.InvalidImage(bad.Message!);
+
         var updated = existing with
         {
             Name = request.Name!,
             Headline = request.Headline!,
             Body = request.Body!,
             Cta = request.Cta!,
-            ImageUrl = string.IsNullOrEmpty(request.ImageUrl) ? null : request.ImageUrl,
+            ImageUrl = imageUrl,
             Version = existing.Version + 1,
             UpdatedAt = time.GetUtcNow(),
             UpdatedBy = request.DisplayName!,
@@ -54,4 +64,6 @@ public sealed class CreativeService(ICreativeRepository repository, TimeProvider
             ? new UpdateResult.Conflict(current)
             : new UpdateResult.NotFound();
     }
+
+    private static string? NormalizeImageUrl(string? imageUrl) => string.IsNullOrEmpty(imageUrl) ? null : imageUrl;
 }
