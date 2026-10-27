@@ -66,20 +66,18 @@ Status: **steps 1–8 are in the tree.** The map of the running system is [docs/
 - DI lifetimes are reviewed (no scoped service in a singleton). Async is correct throughout (no `.Result`, `.Wait()` or `async void`).
 
 ### Frontend (Angular 22, standalone, Signals, OnPush)
-- Services:
-  - `CreativesApi` wraps `HttpClient`.
-  - `CreativeStore` holds Signals state: `creatives`, `selected`, `loading`, `error`, `conflict`.
-  - `CreativeHubService` wraps the SignalR connection.
+- `CreativesApi` wraps `HttpClient`. `CreativeHubService` wraps the SignalR connection. `DisplayName` remembers the name in localStorage. Those three are services.
+- `CreativeSignalStore` is an NgRx signal store (`@ngrx/signals`), not a Redux store and not a service. State: `creatives`, `selected`, `loading`, `saving`, `error`, `conflict`, `remoteUpdate`.
 - Smart containers: `CreativeListPage` and `CreativeEditPage`. They are OnPush and use `takeUntilDestroyed`.
 - Presentational components: `creative-list`, `creative-form`, `presence-bar`, `conflict-banner`, `remote-update-notice`, and `display-name-prompt`. They use `input()` and `output()` only.
-- No NgRx, and no logic in templates.
+- No logic in templates.
 - **409 UX:** the draft stays in the form. A banner says "X saved a newer version" with two actions: **Load latest** (discard my edits) and **Keep my edits** (rebase: only the fields the user actually changed are re-applied onto the latest version, other fields take the latest server values, then save again). There is no merge or diff UI.
 - **Live update while dirty:** a `CreativeUpdated` event never overwrites the draft. It shows a non-blocking "updated by X, load latest?" notice and tracks the new server version. If the form is clean, it updates silently.
 - Explicit loading and error states.
 
 ### Testing
 - Backend: xUnit integration tests (`WebApplicationFactory`, in-memory SQLite) for 404/400/409, the version increment, and the image validator (stubbed handler).
-- Frontend: a small number of service tests, using the runner Angular 22 scaffolds by default.
+- Frontend: unit tests for the signal store, the API client, the hub, and the views, using the runner Angular 22 scaffolds by default.
 - Playwright in `e2e/` runs two browsers against the API and the hub. CI runs that plus the backend and frontend unit tests.
 
 ## Build order

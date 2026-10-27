@@ -23,7 +23,7 @@ It listens on `http://localhost:5114`. That address has no page: the list of Cre
 cd frontend
 npm ci
 npm start      # http://localhost:4200
-npm test       # service, store and component tests
+npm test       # signal store, API, hub, and component tests
 ```
 
 To see a Conflict, open the same Creative in two browser windows under different Display names, save in one, then save in the other.

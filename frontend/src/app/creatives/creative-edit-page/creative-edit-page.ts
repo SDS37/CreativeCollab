@@ -1,7 +1,7 @@
 import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { CreativeStore } from '../../core/creative-store';
+import { CreativeSignalStore } from '../../core/creative-signal-store';
 import { CreativeHubService } from '../../core/creative-hub';
 import { CreativeFields, sameFields, toFields } from '../../core/creative.model';
 import { DisplayName } from '../../core/display-name';
@@ -16,7 +16,7 @@ import { RemoteUpdateNotice } from '../remote-update-notice/remote-update-notice
   templateUrl: './creative-edit-page.html',
 })
 export class CreativeEditPage {
-  protected readonly store = inject(CreativeStore);
+  protected readonly store = inject(CreativeSignalStore);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   protected readonly hub = inject(CreativeHubService);

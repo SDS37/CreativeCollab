@@ -61,7 +61,7 @@ The form never talks to the API. The edit page asks the store to save. The store
 ```mermaid
 sequenceDiagram
   participant Form as Creative form
-  participant Store as CreativeStore
+  participant Store as CreativeSignalStore
   participant API as CreativeEndpoints
   participant Svc as CreativeService
   participant DB as SQLite
@@ -122,11 +122,11 @@ Endpoints stay thin. The rules live in the service, the store, and the hub clien
 | Image | Only when `imageUrl` changes. `image/*` only. Three-second timeout. No redirects. Loopback, private, and link-local addresses are rejected. Failure is 400. DNS rebinding is not fully closed |
 | Identity | Display name from the client. Trusted, not authenticated. Required on create and update |
 | CORS | `http://localhost:4200` with credentials, because SignalR needs it. The Angular app calls the API directly |
-| Frontend | Angular 22, standalone, Signals, OnPush. Containers hold state. Presentational components take `input()` and `output()` only. A dirty form is never overwritten by `CreativeUpdated` |
+| Frontend | Angular 22, standalone, Signals, OnPush. Screen state lives in `CreativeSignalStore`. Presentational components take `input()` and `output()` only. A dirty form is never overwritten by `CreativeUpdated` |
 
 ## Frontend today
 
-`frontend/` is an Angular 22 app (standalone, Signals, no NgRx). Angular 22 makes OnPush the default, so no component sets it. Tests run on Vitest through `ng test`, with HTTP mocked by `HttpTestingController`, so no API is needed. Playwright in `e2e/` drives two browsers against the running API. The API is called directly at `http://localhost:5114` (`core/api-config.ts`).
+`frontend/` is an Angular 22 app (standalone, Signals). Screen state is an NgRx signal store (`@ngrx/signals`), not a Redux store and not a service. Angular 22 makes OnPush the default, so no component sets it. Tests run on Vitest through `ng test`, with HTTP mocked by `HttpTestingController`, so no API is needed. Playwright in `e2e/` drives two browsers against the running API. The API is called directly at `http://localhost:5114` (`core/api-config.ts`).
 
 Routes: `/creatives` (list), `/creatives/new`, and `/creatives/:id` (the same edit page). The page is the controller. The store, the API client, and the hub client are the model. The components under them are views: they take inputs and emit outputs, and they do not call the API.
 
@@ -145,7 +145,7 @@ flowchart TB
     EditPage["CreativeEditPage"]
   end
   subgraph model [Model]
-    Store["CreativeStore"]
+    Store["CreativeSignalStore"]
     Http["CreativesApi"]
     HubSvc["CreativeHubService"]
     Name["DisplayName"]
@@ -167,7 +167,7 @@ flowchart TB
 |---|---|
 | CreativeListPage | Loads the list and navigates to a Creative. It does not join the hub |
 | CreativeEditPage | Loads one Creative or starts a new one, joins its group, and decides what the views are allowed to show |
-| CreativeStore | Signals for the list, the selected Creative, loading, saving, errors, the Conflict, and a remote update that arrived while the form was dirty |
+| CreativeSignalStore | An NgRx signal store for the list, the selected Creative, loading, saving, errors, the Conflict, and a remote update that arrived while the form was dirty |
 | CreativesApi | HTTP for the four endpoints. It attaches the Display name and, on update, the loaded Version |
 | CreativeHubService | The SignalR connection. `presence` is who has this Creative open. `updated` is `CreativeUpdated` |
 | DisplayName | The name in localStorage. The prompt is the view; this service is the memory |
@@ -185,7 +185,7 @@ cd frontend && npm test -- --watch=false
 |---|---|---|
 | `DisplayName` | `core/display-name.ts` | The Collaborator's Display name in localStorage. Trusted, not authenticated. The shell shows a prompt until it is set and lets it be changed |
 | `CreativesApi` | `core/creatives-api.ts` | One method per endpoint. Adds the Display name to create and update, and the loaded Version to update. An empty image URL is omitted |
-| `CreativeStore` | `core/creative-store.ts` | Signals: `creatives`, `selected`, `loading`, `saving`, `error`, `conflict`, `remoteUpdate`. `receiveUpdate(creative, formIsDirty)` ignores other Creatives and Versions not newer than the selected, pending or Conflict copy, ignores my own echo while a save is in flight, adopts the update when the form is clean, and otherwise keeps it as `remoteUpdate` without touching the form. A save result never moves `selected` backwards. A 409 with `current` sets `conflict` (not `error`) and leaves `selected` as the Version the Collaborator loaded. `loadLatest` adopts `conflict`; `keepMyEdits` Rebases and saves with `current.version`. Turns HTTP failures into network, not-found, validation (field messages) or server errors. A newer load cancels an older one |
+| `CreativeSignalStore` | `core/creative-signal-store.ts` | `signalStore` state: `creatives`, `selected`, `loading`, `saving`, `error`, `conflict`, `remoteUpdate`. `receiveUpdate(creative, formIsDirty)` ignores other Creatives and Versions not newer than the selected, pending or Conflict copy, ignores my own echo while a save is in flight, adopts the update when the form is clean, and otherwise keeps it as `remoteUpdate` without touching the form. A save result never moves `selected` backwards. A 409 with `current` sets `conflict` (not `error`) and leaves `selected` as the Version the Collaborator loaded. `loadLatest` adopts `conflict`; `keepMyEdits` Rebases and saves with `current.version`. Turns HTTP failures into network, not-found, validation (field messages) or server errors. A newer load cancels an older one |
 | `CreativeListPage`, `CreativeEditPage` | `creatives/` | Containers. The edit page serves `/creatives/new` and `/creatives/:id`. They show loading, error with retry, and the form |
 | `CreativeHubService` | `core/creative-hub.ts` | Wraps the SignalR connection (built by an injectable factory so tests use a fake). `join(id, name)` invokes `JoinCreative` and exposes `presence` (one name per session; `UserJoined` adds one, `UserLeft` removes one). `updated` streams `CreativeUpdated`. It rejoins after a reconnect, `unavailable` is set when the connection fails, and `dispose` leaves the group and stops the connection |
 | `Rebase` | `core/rebase.ts` | Pure function: fields where the Draft differs from the loaded Creative keep the Draft value, all others take the latest. An empty and an absent image URL are equal |

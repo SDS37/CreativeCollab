@@ -2,7 +2,7 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { Creative, CreativeFields } from './creative.model';
-import { CreativeStore } from './creative-store';
+import { CreativeSignalStore } from './creative-signal-store';
 import { DisplayName } from './display-name';
 
 const BASE = 'http://localhost:5114/api/creatives';
@@ -13,15 +13,15 @@ function creative(id: number, version = 1): Creative {
   return { id: String(id), ...fields, imageUrl: null, version, updatedAt: '2026-01-01T00:00:00Z', updatedBy: 'Ada' };
 }
 
-describe('CreativeStore', () => {
-  let store: CreativeStore;
+describe('CreativeSignalStore', () => {
+  let store: CreativeSignalStore;
   let http: HttpTestingController;
 
   beforeEach(() => {
     localStorage.clear();
     TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
     TestBed.inject(DisplayName).set('Ada');
-    store = TestBed.inject(CreativeStore);
+    store = TestBed.inject(CreativeSignalStore);
     http = TestBed.inject(HttpTestingController);
   });
 

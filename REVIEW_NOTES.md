@@ -22,12 +22,12 @@ Where each reviewed pattern lives in the code. Line numbers are from the commit 
 
 | Pattern | Where | What to look at |
 |---|---|---|
-| Signals state | `core/creative-store.ts` | `creatives`, `selected`, `loading`, `saving`, `error`, `conflict`, `remoteUpdate` as Signals |
+| Signals state | `core/creative-signal-store.ts` | `signalStore` state: `creatives`, `selected`, `loading`, `saving`, `error`, `conflict`, `remoteUpdate` |
 | OnPush | every component | Angular 22 makes OnPush the default, so components do not set it explicitly |
 | Subscription hygiene | `creatives/creative-edit-page/creative-edit-page.ts:60,71,75`, `creatives/creative-form/creative-form.ts:51,55` | Route and hub subscriptions use `takeUntilDestroyed()`. The form adopts a new Creative in an `effect()`. The hub is disposed in `DestroyRef.onDestroy` |
-| Separation of concerns | `core/` (services) versus `creatives/*` | Containers (`creative-list-page`, `creative-edit-page`) talk to the store. Presentational components (`creative-form`, `creative-list`, `presence-bar`, `conflict-banner`, `remote-update-notice`) use `input()` and `output()` only |
+| Separation of concerns | `core/` versus `creatives/*` | `CreativeSignalStore` holds screen state. Containers (`creative-list-page`, `creative-edit-page`) talk to it. `CreativesApi`, `CreativeHubService`, and `DisplayName` stay services. Presentational components (`creative-form`, `creative-list`, `presence-bar`, `conflict-banner`, `remote-update-notice`) use `input()` and `output()` only |
 | Conflict and Rebase | `core/rebase.ts`, `creatives/conflict-banner` | Only fields the Collaborator changed are re-applied onto `current` |
-| Live update versus Draft | `core/creative-store.ts`, `creatives/remote-update-notice` | A dirty Draft is never overwritten |
+| Live update versus Draft | `core/creative-signal-store.ts`, `creatives/remote-update-notice` | A dirty Draft is never overwritten |
 | No logic in templates | `computed()` in each component | Templates bind to Signals only |
 
 ## Known limitations
