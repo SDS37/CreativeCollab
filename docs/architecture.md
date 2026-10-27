@@ -1,6 +1,6 @@
 # Architecture
 
-CreativeCollab is one API and, when the frontend step lands, one Angular app. The API owns the Creative. The browser owns the Draft. A save sends the Version the Collaborator loaded. The API accepts it or returns a Conflict.
+CreativeCollab is one API and one Angular app. The API owns the Creative. The browser owns the Draft. A save sends the Version the Collaborator loaded. The API accepts it or returns a Conflict.
 
 This page separates what the repository runs today from what [PLAN.md](../PLAN.md) still requires. A diagram of the target is not a claim that the target is built.
 
@@ -28,7 +28,7 @@ InMemoryCreativeRepository
 | Validation | `Validation/` | Create only. Empty required fields, max lengths, and a non-http(s) image URL return 400 `ValidationProblemDetails` |
 | Tests | `backend/CreativeCollab.Api.Tests` | xUnit and `WebApplicationFactory`. A fake TimeProvider controls sort order |
 
-There is no update route, no 409, no database file, no hub, and no `frontend/` directory.
+There is no update route, no 409, no database file, and no hub on the backend branch this was written against. The backend steps 2 to 6 are built elsewhere.
 
 Development listens on `http://localhost:5114` (`Properties/launchSettings.json`).
 
@@ -71,6 +71,25 @@ API
 | CORS | `http://localhost:4200` with credentials, because SignalR needs it. The Angular app calls the API directly |
 | Frontend | Angular 22, standalone, Signals, OnPush. Containers hold state. Presentational components take `input()` and `output()` only. A dirty form is never overwritten by `CreativeUpdated` |
 
+## Frontend today
+
+`frontend/` is an Angular 22 app (standalone, Signals, no NgRx). Angular 22 makes OnPush the default, so no component sets it. Tests run on Vitest through `ng test`, with HTTP mocked by `HttpTestingController`, so no API is needed. The API is called directly at `http://localhost:5114` (`core/api-config.ts`).
+
+```bash
+cd frontend && npm install && npm start     # http://localhost:4200
+cd frontend && npm test -- --watch=false
+```
+
+| Piece | Where | Behaviour |
+|---|---|---|
+| `DisplayName` | `core/display-name.ts` | The Collaborator's Display name in localStorage. Trusted, not authenticated. The shell shows a prompt until it is set and lets it be changed |
+| `CreativesApi` | `core/creatives-api.ts` | One method per endpoint. Adds the Display name to create and update, and the loaded Version to update. An empty image URL is omitted |
+| `CreativeStore` | `core/creative-store.ts` | Signals: `creatives`, `selected`, `loading`, `saving`, `error`. Turns HTTP failures into network, not-found, validation (field messages) or server errors. A newer load cancels an older one |
+| `CreativeListPage`, `CreativeEditPage` | `creatives/` | Containers. The edit page serves `/creatives/new` and `/creatives/:id`. They show loading, error with retry, and the form |
+| `creative-list`, `creative-form`, `display-name-prompt` | `creatives/`, `display-name-prompt/` | Presentational: `input()` and `output()` only. The form emits its Draft as it changes and resets only when handed a different Creative |
+
+Not built yet in the frontend: the Conflict banner (issue 8) and the hub client with Presence and live updates (issue 9).
+
 ## Folders
 
 | Path | May do | Must not do |
@@ -80,7 +99,7 @@ API
 | `Data/` | Persist and query Creatives | Validate input or broadcast |
 | `Hubs/` | Group membership and Presence | Save a Creative |
 | `Validation/` | Shape of a request | Decide a Conflict |
-| `frontend/` (not created) | Draft, Conflict UI, hub client | Invent a second Version rule |
+| `frontend/` | Draft, Conflict UI, hub client | Invent a second Version rule |
 
 No second backend project. The test project is the only sibling of the API.
 
