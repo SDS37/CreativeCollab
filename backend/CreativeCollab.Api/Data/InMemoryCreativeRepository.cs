@@ -19,4 +19,13 @@ public sealed class InMemoryCreativeRepository : ICreativeRepository
         _items[creative.Id] = creative;
         return Task.CompletedTask;
     }
+
+    public Task<bool> TryUpdateAsync(Creative updated, int expectedVersion, CancellationToken ct)
+    {
+        if (!_items.TryGetValue(updated.Id, out var existing) || existing.Version != expectedVersion)
+            return Task.FromResult(false);
+
+        // Compare-and-swap against the instance we validated, so a racing save cannot be lost.
+        return Task.FromResult(_items.TryUpdate(updated.Id, updated, existing));
+    }
 }

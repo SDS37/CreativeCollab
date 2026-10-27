@@ -170,4 +170,124 @@ public class CreativesApiTests(WebApplicationFactory<Program> factory) : IClassF
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal(JsonValueKind.Null, body.GetProperty("imageUrl").ValueKind);
     }
+
+    private static object ValidUpdate(int? version, string name = "Spring sale v2", string displayName = "Bo") => new
+    {
+        name,
+        headline = "Save more",
+        body = "Everything must go.",
+        cta = "Buy",
+        imageUrl = (string?)null,
+        displayName,
+        version,
+    };
+
+    private static async Task<JsonElement> CreateAsync(HttpClient client)
+    {
+        var response = await client.PostAsJsonAsync("/api/creatives", ValidCreative());
+        return await response.Content.ReadFromJsonAsync<JsonElement>();
+    }
+
+    [Fact]
+    public async Task Update_with_the_current_version_saves_and_increments_the_version()
+    {
+        var client = NewClient();
+        var created = await CreateAsync(client);
+        var id = created.GetProperty("id").GetGuid();
+
+        var response = await client.PutAsJsonAsync($"/api/creatives/{id}", ValidUpdate(1));
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(2, body.GetProperty("version").GetInt32());
+        Assert.Equal("Spring sale v2", body.GetProperty("name").GetString());
+        Assert.Equal("Bo", body.GetProperty("updatedBy").GetString());
+        var fetched = await client.GetFromJsonAsync<JsonElement>($"/api/creatives/{id}");
+        Assert.Equal(2, fetched.GetProperty("version").GetInt32());
+        Assert.Equal("Save more", fetched.GetProperty("headline").GetString());
+    }
+
+    [Fact]
+    public async Task Update_with_a_stale_version_returns_409_with_the_latest_creative_in_current()
+    {
+        var client = NewClient();
+        var id = (await CreateAsync(client)).GetProperty("id").GetGuid();
+        await client.PutAsJsonAsync($"/api/creatives/{id}", ValidUpdate(1, name: "Ana's winner", displayName: "Ana"));
+
+        var response = await client.PutAsJsonAsync($"/api/creatives/{id}", ValidUpdate(1, name: "Bo's loser"));
+
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(409, problem.GetProperty("status").GetInt32());
+        var current = problem.GetProperty("current");
+        Assert.Equal(2, current.GetProperty("version").GetInt32());
+        Assert.Equal("Ana's winner", current.GetProperty("name").GetString());
+        Assert.Equal("Ana", current.GetProperty("updatedBy").GetString());
+        var stored = await client.GetFromJsonAsync<JsonElement>($"/api/creatives/{id}");
+        Assert.Equal("Ana's winner", stored.GetProperty("name").GetString());
+    }
+
+    [Fact]
+    public async Task Update_returns_404_for_a_missing_id()
+    {
+        var client = NewClient();
+
+        var response = await client.PutAsJsonAsync($"/api/creatives/{Guid.NewGuid()}", ValidUpdate(1));
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Update_returns_400_with_details_for_each_invalid_field()
+    {
+        var client = NewClient();
+        var id = (await CreateAsync(client)).GetProperty("id").GetGuid();
+
+        var response = await client.PutAsJsonAsync($"/api/creatives/{id}", new
+        {
+            name = new string('n', 101),
+            headline = "",
+            body = new string('b', 201),
+            cta = new string('c', 21),
+            imageUrl = "ftp://x/a.png",
+            displayName = "",
+            version = 1,
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var errors = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("errors");
+        foreach (var field in new[] { "name", "headline", "body", "cta", "imageUrl", "displayName" })
+            Assert.True(errors.TryGetProperty(field, out _), $"expected a validation error for {field}");
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData(0)]
+    [InlineData(-3)]
+    public async Task Update_returns_400_when_the_version_is_missing_or_below_1(int? version)
+    {
+        var client = NewClient();
+        var id = (await CreateAsync(client)).GetProperty("id").GetGuid();
+
+        var response = await client.PutAsJsonAsync($"/api/creatives/{id}", ValidUpdate(version));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var errors = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("errors");
+        Assert.True(errors.TryGetProperty("version", out _));
+    }
+
+    [Fact]
+    public async Task Update_sets_updated_at_from_the_clock()
+    {
+        var time = new FakeTimeProvider(DateTimeOffset.Parse("2026-01-01T00:00:00Z"));
+        var client = factory.WithWebHostBuilder(b => b.ConfigureServices(s =>
+            s.AddSingleton<TimeProvider>(time))).CreateClient();
+        var id = (await CreateAsync(client)).GetProperty("id").GetGuid();
+        time.Advance(TimeSpan.FromHours(1));
+
+        var body = await (await client.PutAsJsonAsync($"/api/creatives/{id}", ValidUpdate(1)))
+            .Content.ReadFromJsonAsync<JsonElement>();
+
+        Assert.Equal(DateTimeOffset.Parse("2026-01-01T01:00:00Z"), body.GetProperty("updatedAt").GetDateTimeOffset());
+    }
 }

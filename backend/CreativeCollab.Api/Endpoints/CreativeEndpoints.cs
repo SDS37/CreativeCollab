@@ -22,6 +22,21 @@ public static class CreativeEndpoints
             return Results.Created($"/api/creatives/{creative.Id}", creative);
         }).AddEndpointFilter<ValidationFilter<CreateCreativeRequest>>();
 
+        group.MapPut("/{id:guid}", async (Guid id, UpdateCreativeRequest request, CreativeService service, CancellationToken ct) =>
+            await service.UpdateAsync(id, request, ct) switch
+            {
+                UpdateResult.Updated u => Results.Ok(u.Creative),
+                UpdateResult.Conflict c => ConflictResult(c.Current),
+                _ => Results.NotFound(),
+            }).AddEndpointFilter<ValidationFilter<UpdateCreativeRequest>>();
+
         return app;
     }
+
+    private static IResult ConflictResult(Creative current) =>
+        Results.Problem(
+            title: "Conflict",
+            detail: "The Creative was saved by someone else since you loaded it.",
+            statusCode: StatusCodes.Status409Conflict,
+            extensions: new Dictionary<string, object?> { ["current"] = current });
 }

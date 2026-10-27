@@ -9,7 +9,7 @@ The app is done when a colleague can run two browsers against one API and every 
 - [x] `GET /api/creatives/{id}` returns the Creative, or 404
 - [x] `POST /api/creatives` returns 201, Version 1, and the Display name in `updatedBy`
 - [x] Create rejects a missing required field, an over-long field, and an image URL that is not absolute http or https, as 400 `ValidationProblemDetails`
-- [ ] `PUT` (or the planned update route) requires the loaded Version and a Display name
+- [x] `PUT` (or the planned update route) requires the loaded Version and a Display name
 - [ ] A stale Version returns 409 with the latest Creative in `current`, including when the database reports a concurrency failure
 - [ ] Creatives survive a restart in `creativecollab.db`. Development applies migrations on startup. An empty table is seeded
 - [ ] `updatedAt` comes from an injected `TimeProvider`

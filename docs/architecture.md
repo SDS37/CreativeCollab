@@ -11,7 +11,7 @@ HTTP client
     │
     ▼
 Minimal API  /api/creatives
-    │  list, get, create
+    │  list, get, create, update
     ▼
 CreativeService
     │
@@ -22,13 +22,13 @@ InMemoryCreativeRepository
 | Piece | Where | Behaviour |
 |---|---|---|
 | Host | `backend/CreativeCollab.Api/Program.cs` | Wires TimeProvider, the repository, the service, and FluentValidation |
-| HTTP | `Endpoints/CreativeEndpoints.cs` | `GET /api/creatives`, `GET /api/creatives/{id}`, `POST /api/creatives` |
-| Rules | `Services/CreativeService.cs` | Creates a Creative at Version 1, stamps `updatedAt` from TimeProvider, records the Display name |
-| Store | `Data/InMemoryCreativeRepository.cs` | Process memory. The list is most recently updated first. Restart drops every Creative |
-| Validation | `Validation/` | Create only. Empty required fields, max lengths, and a non-http(s) image URL return 400 `ValidationProblemDetails` |
+| HTTP | `Endpoints/CreativeEndpoints.cs` | `GET /api/creatives`, `GET /api/creatives/{id}`, `POST /api/creatives`, `PUT /api/creatives/{id}` |
+| Rules | `Services/CreativeService.cs` | Creates a Creative at Version 1. Update checks the supplied Version, increments it, stamps `updatedAt` from TimeProvider, records the Display name. A stale Version, or a store that rejects the compare-and-swap, is a Conflict carrying the latest Creative |
+| Store | `Data/InMemoryCreativeRepository.cs` | Process memory. Update is a compare-and-swap on the Version. The list is most recently updated first. Restart drops every Creative |
+| Validation | `Validation/` | Create and update share one rule set; update also requires Version >= 1. Empty required fields, max lengths, and a non-http(s) image URL return 400 `ValidationProblemDetails` |
 | Tests | `backend/CreativeCollab.Api.Tests` | xUnit and `WebApplicationFactory`. A fake TimeProvider controls sort order |
 
-There is no update route, no 409, no database file, no hub, and no `frontend/` directory.
+A stale update returns 409 `ProblemDetails` with the latest Creative in `current`. There is no database file, no hub, and no `frontend/` directory.
 
 Development listens on `http://localhost:5114` (`Properties/launchSettings.json`).
 
@@ -90,7 +90,7 @@ No second backend project. The test project is the only sibling of the API.
 |---|---|
 | Unknown id | 404 |
 | Invalid create body | 400 `ValidationProblemDetails` |
-| Stale Version, once update exists | 409, body includes `current` |
+| Stale Version | 409, body includes `current` |
 | Image URL that is not a public image, once the checker exists | 400 |
 | Unexpected exception, once the handler exists | ProblemDetails, not an empty 500 |
 

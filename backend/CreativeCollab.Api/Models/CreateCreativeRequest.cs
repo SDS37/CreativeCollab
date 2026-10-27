@@ -6,4 +6,4 @@ public sealed record CreateCreativeRequest(
     string? Body,
     string? Cta,
     string? ImageUrl,
-    string? DisplayName);
+    string? DisplayName) : ICreativeFields;
