@@ -37,3 +37,7 @@ export const EDITABLE_FIELDS: readonly (keyof CreativeFields)[] = [
   'cta',
   'imageUrl',
 ];
+
+export function sameFields(a: CreativeFields, b: CreativeFields): boolean {
+  return EDITABLE_FIELDS.every((field) => a[field] === b[field]);
+}

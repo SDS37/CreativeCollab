@@ -219,6 +219,166 @@ describe('CreativeStore', () => {
     });
   });
 
+  describe('receiveUpdate', () => {
+    const remote = (version: number, updatedBy = 'Grace'): Creative => ({
+      ...creative(1, version),
+      headline: `v${version}`,
+      updatedBy,
+    });
+
+    function openLoaded(version = 1): void {
+      store.open(1);
+      http.expectOne(`${BASE}/1`).flush(creative(1, version));
+    }
+
+    it('adopts a newer Creative silently when the form is clean', () => {
+      openLoaded();
+
+      store.receiveUpdate(remote(2), false);
+
+      expect(store.selected()?.version).toBe(2);
+      expect(store.selected()?.headline).toBe('v2');
+      expect(store.remoteUpdate()).toBeNull();
+    });
+
+    it('never overwrites a dirty Draft: keeps the selected Creative and records a remote update', () => {
+      openLoaded();
+
+      store.receiveUpdate(remote(2), true);
+
+      expect(store.selected()?.version).toBe(1);
+      expect(store.remoteUpdate()?.version).toBe(2);
+      expect(store.remoteUpdate()?.updatedBy).toBe('Grace');
+    });
+
+    it('tracks the newest Version while dirty', () => {
+      openLoaded();
+
+      store.receiveUpdate(remote(2), true);
+      store.receiveUpdate(remote(4, 'Linus'), true);
+      store.receiveUpdate(remote(3), true);
+
+      expect(store.remoteUpdate()?.version).toBe(4);
+      expect(store.remoteUpdate()?.updatedBy).toBe('Linus');
+    });
+
+    it('ignores an echo whose Version already matches', () => {
+      openLoaded(2);
+      const before = store.selected();
+
+      store.receiveUpdate(remote(2), false);
+      store.receiveUpdate(remote(1), true);
+
+      expect(store.selected()).toBe(before);
+      expect(store.remoteUpdate()).toBeNull();
+    });
+
+    it('ignores an update that is not for the open Creative', () => {
+      openLoaded();
+
+      store.receiveUpdate({ ...remote(5), id: 99 }, false);
+
+      expect(store.selected()?.version).toBe(1);
+    });
+
+    it('ignores updates when no Creative is open', () => {
+      store.receiveUpdate(remote(2), false);
+      expect(store.selected()).toBeNull();
+    });
+
+    it('ignores the echo of my own save that arrives before the HTTP response', async () => {
+      openLoaded();
+      const saving = store.update(1, fields, 1);
+
+      store.receiveUpdate(remote(2, 'Ada'), true);
+      expect(store.remoteUpdate()).toBeNull();
+
+      http.expectOne(`${BASE}/1`).flush(creative(1, 2));
+      await saving;
+      expect(store.selected()?.version).toBe(2);
+    });
+
+    it('still records another Collaborator update that arrives during my save', async () => {
+      openLoaded();
+      const saving = store.update(1, fields, 1);
+
+      store.receiveUpdate(remote(2, 'Grace'), true);
+
+      expect(store.remoteUpdate()?.version).toBe(2);
+      http.expectOne(`${BASE}/1`).flush({ current: remote(2, 'Grace') }, { status: 409, statusText: 'Conflict' });
+      await saving;
+    });
+
+    it('lets a Conflict show the newest copy rather than a second prompt', async () => {
+      openLoaded();
+      const saving = store.update(1, fields, 1);
+      http.expectOne(`${BASE}/1`).flush({ current: remote(2) }, { status: 409, statusText: 'Conflict' });
+      await saving;
+
+      store.receiveUpdate(remote(3, 'Linus'), true);
+
+      expect(store.conflict()?.version).toBe(3);
+      expect(store.conflict()?.updatedBy).toBe('Linus');
+      expect(store.remoteUpdate()).toBeNull();
+    });
+
+    it('hands over to the Conflict banner and drops the remote update when my stale save is rejected', async () => {
+      openLoaded();
+      store.receiveUpdate(remote(2), true);
+      const saving = store.update(1, fields, 1);
+      http.expectOne(`${BASE}/1`).flush({ current: remote(2) }, { status: 409, statusText: 'Conflict' });
+      await saving;
+
+      expect(store.conflict()?.version).toBe(2);
+      expect(store.remoteUpdate()).toBeNull();
+    });
+
+    it('loadRemote adopts the newest copy and clears the notice', () => {
+      openLoaded();
+      store.receiveUpdate(remote(3), true);
+
+      store.loadRemote();
+
+      expect(store.selected()?.version).toBe(3);
+      expect(store.remoteUpdate()).toBeNull();
+    });
+
+    it('does not move the selected Creative backwards when a save result is older', async () => {
+      openLoaded();
+      const saving = store.update(1, fields, 1);
+      store.receiveUpdate(remote(3, 'Grace'), false);
+      http.expectOne(`${BASE}/1`).flush(creative(1, 2));
+      await saving;
+
+      expect(store.selected()?.version).toBe(3);
+    });
+
+    it('keeps a remote update newer than my save, and clears one my save reached', async () => {
+      openLoaded();
+      store.receiveUpdate(remote(2), true);
+      const saving = store.update(1, fields, 2);
+      http.expectOne(`${BASE}/1`).flush(creative(1, 3));
+      await saving;
+      expect(store.remoteUpdate()).toBeNull();
+
+      store.receiveUpdate(remote(5), true);
+      const again = store.update(1, fields, 3);
+      http.expectOne(`${BASE}/1`).flush(creative(1, 4));
+      await again;
+      expect(store.remoteUpdate()?.version).toBe(5);
+    });
+
+    it('opening another Creative clears the remote update', () => {
+      openLoaded();
+      store.receiveUpdate(remote(2), true);
+
+      store.open(2);
+
+      expect(store.remoteUpdate()).toBeNull();
+      http.expectOne(`${BASE}/2`).flush(creative(2));
+    });
+  });
+
   describe('update', () => {
     it('returns the saved Creative with its new Version', async () => {
       const result = store.update(1, fields, 2);

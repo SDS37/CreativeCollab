@@ -6,6 +6,13 @@
   }
 </header>
 
+@if (summary()) {
+  <app-presence-bar [names]="hub.presence()" />
+}
+@if (hub.unavailable()) {
+  <p class="live-off" role="status">Live updates are unavailable. Changes by others will not appear until you reload.</p>
+}
+
 @if (store.loading()) {
   <p role="status">Loading…</p>
 }
@@ -21,6 +28,10 @@
     (loadLatest)="loadLatest()"
     (keepMine)="keepMyEdits()"
   />
+}
+
+@if (store.remoteUpdate(); as update) {
+  <app-remote-update-notice [update]="update" (loadLatest)="loadRemote()" />
 }
 
 @if (canRetry()) {

@@ -1,26 +1,39 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CreativeStore } from '../../core/creative-store';
-import { CreativeFields } from '../../core/creative.model';
+import { CreativeHubService } from '../../core/creative-hub';
+import { CreativeFields, sameFields, toFields } from '../../core/creative.model';
+import { DisplayName } from '../../core/display-name';
 import { ConflictBanner } from '../conflict-banner/conflict-banner';
 import { CreativeForm } from '../creative-form/creative-form';
+import { PresenceBar } from '../presence-bar/presence-bar';
+import { RemoteUpdateNotice } from '../remote-update-notice/remote-update-notice';
 
 @Component({
   selector: 'app-creative-edit-page',
-  imports: [ConflictBanner, CreativeForm, RouterLink],
+  imports: [ConflictBanner, CreativeForm, PresenceBar, RemoteUpdateNotice, RouterLink],
   templateUrl: './creative-edit-page.html',
 })
 export class CreativeEditPage {
   protected readonly store = inject(CreativeStore);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  protected readonly hub = inject(CreativeHubService);
+  private readonly displayName = inject(DisplayName);
 
   /** The id in the route, or null on the create page. */
   private readonly id = signal<number | null>(null);
 
   /** The Collaborator's unsaved edits, as last reported by the form. */
-  private draft: CreativeFields | null = null;
+  private readonly draft = signal<CreativeFields | null>(null);
+
+  /** True when the Draft differs from the Creative the form was loaded with. */
+  private readonly isDirty = computed(() => {
+    const draft = this.draft();
+    const selected = this.store.selected();
+    return draft !== null && selected !== null && !sameFields(draft, toFields(selected));
+  });
 
   protected readonly heading = computed(() => (this.id() === null ? 'New Creative' : 'Edit Creative'));
 
@@ -46,7 +59,18 @@ export class CreativeEditPage {
       const id = raw === null ? null : Number(raw);
       this.id.set(id);
       this.load();
+      if (id === null) {
+        void this.hub.leave();
+      } else {
+        void this.hub.join(id, this.displayName.value());
+      }
     });
+
+    this.hub.updated
+      .pipe(takeUntilDestroyed())
+      .subscribe((creative) => this.store.receiveUpdate(creative, this.isDirty()));
+
+    inject(DestroyRef).onDestroy(() => void this.hub.dispose());
   }
 
   protected load(): void {
@@ -59,17 +83,22 @@ export class CreativeEditPage {
   }
 
   protected onDraftChange(draft: CreativeFields): void {
-    this.draft = draft;
+    this.draft.set(draft);
   }
 
   protected loadLatest(): void {
     this.store.loadLatest();
   }
 
+  protected loadRemote(): void {
+    this.store.loadRemote();
+  }
+
   protected async keepMyEdits(): Promise<void> {
     const id = this.id();
-    if (id !== null && this.draft) {
-      await this.store.keepMyEdits(id, this.draft);
+    const draft = this.draft();
+    if (id !== null && draft) {
+      await this.store.keepMyEdits(id, draft);
     }
   }
 

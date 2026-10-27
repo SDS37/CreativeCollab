@@ -2,8 +2,10 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter, Router } from '@angular/router';
-import { of } from 'rxjs';
+import { of, Subject } from 'rxjs';
+import { signal } from '@angular/core';
 import { Creative } from '../../core/creative.model';
+import { CreativeHubService } from '../../core/creative-hub';
 import { DisplayName } from '../../core/display-name';
 import { CreativeEditPage } from './creative-edit-page';
 
@@ -21,9 +23,21 @@ const creative: Creative = {
   updatedBy: 'Ada',
 };
 
+class FakeHub {
+  readonly presence = signal<string[]>([]);
+  readonly connected = signal(false);
+  readonly unavailable = signal(false);
+  readonly updates = new Subject<Creative>();
+  readonly updated = this.updates.asObservable();
+  readonly join = vi.fn(async (_id: number, _name: string) => {});
+  readonly leave = vi.fn(async () => {});
+  readonly dispose = vi.fn(async () => {});
+}
+
 describe('CreativeEditPage', () => {
   let http: HttpTestingController;
   let router: Router;
+  let hub: FakeHub;
 
   function setup(id: string | null): ComponentFixture<CreativeEditPage> {
     localStorage.clear();
@@ -32,6 +46,7 @@ describe('CreativeEditPage', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
+        { provide: CreativeHubService, useFactory: () => (hub = new FakeHub()) },
         { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap(id ? { id } : {})) } },
       ],
     });
@@ -205,6 +220,137 @@ describe('CreativeEditPage', () => {
       await fixture.whenStable();
 
       expect(text(fixture)).toContain('Another Collaborator saved a newer version');
+    });
+  });
+
+  describe('live updates and Presence', () => {
+    const remote = { ...creative, version: 3, headline: 'Grace headline', updatedBy: 'Grace' };
+
+    async function opened(): Promise<ComponentFixture<CreativeEditPage>> {
+      const fixture = setup('3');
+      await fixture.whenStable();
+      http.expectOne(`${BASE}/3`).flush(creative);
+      await fixture.whenStable();
+      return fixture;
+    }
+
+    it('joins the Creative group with the Display name', async () => {
+      await opened();
+      expect(hub.join).toHaveBeenCalledWith(3, 'Ada');
+    });
+
+    it('does not join anything on the create page', async () => {
+      const fixture = setup(null);
+      await fixture.whenStable();
+      expect(hub.join).not.toHaveBeenCalled();
+    });
+
+    it('shows who has the Creative open as Presence changes', async () => {
+      const fixture = await opened();
+
+      hub.presence.set(['Ada', 'Grace']);
+      await fixture.whenStable();
+      expect(text(fixture)).toContain('Ada, Grace');
+
+      hub.presence.set(['Ada']);
+      await fixture.whenStable();
+      expect(text(fixture)).not.toContain('Grace');
+    });
+
+    it('says live updates are unavailable when the connection failed', async () => {
+      const fixture = await opened();
+      hub.unavailable.set(true);
+      await fixture.whenStable();
+      expect(text(fixture)).toContain('Live updates are unavailable');
+    });
+
+    it('updates a clean form silently', async () => {
+      const fixture = await opened();
+
+      hub.updates.next(remote);
+      await fixture.whenStable();
+
+      expect(field(fixture, 'headline').value).toBe('Grace headline');
+      expect(text(fixture)).toContain('Version 3');
+      expect(text(fixture)).not.toContain('Grace updated');
+    });
+
+    it('never overwrites a dirty Draft and shows a notice instead', async () => {
+      const fixture = await opened();
+      type(fixture, 'headline', 'Typing');
+      await fixture.whenStable();
+
+      hub.updates.next(remote);
+      await fixture.whenStable();
+
+      expect(field(fixture, 'headline').value).toBe('Typing');
+      expect(text(fixture)).toContain('Grace updated this Creative');
+      expect(text(fixture)).toContain('Version 2');
+    });
+
+    it('treats a form edited back to its saved values as clean', async () => {
+      const fixture = await opened();
+      type(fixture, 'headline', 'Typing');
+      type(fixture, 'headline', 'Fresh');
+      await fixture.whenStable();
+
+      hub.updates.next(remote);
+      await fixture.whenStable();
+
+      expect(field(fixture, 'headline').value).toBe('Grace headline');
+    });
+
+    it('Load latest from the notice replaces the form and hides the notice', async () => {
+      const fixture = await opened();
+      type(fixture, 'headline', 'Typing');
+      await fixture.whenStable();
+      hub.updates.next(remote);
+      await fixture.whenStable();
+
+      ((fixture.nativeElement as HTMLElement).querySelector('button.load-remote') as HTMLButtonElement).click();
+      await fixture.whenStable();
+
+      expect(field(fixture, 'headline').value).toBe('Grace headline');
+      expect(text(fixture)).not.toContain('Grace updated this Creative');
+    });
+
+    it('keeps the notice on the newest Version when more saves arrive', async () => {
+      const fixture = await opened();
+      type(fixture, 'headline', 'Typing');
+      await fixture.whenStable();
+
+      hub.updates.next(remote);
+      hub.updates.next({ ...remote, version: 4, updatedBy: 'Linus' });
+      await fixture.whenStable();
+
+      expect(text(fixture)).toContain('Linus updated this Creative');
+      expect(text(fixture)).not.toContain('Grace updated this Creative');
+    });
+
+    it('ignores an echo whose Version already matches', async () => {
+      const fixture = await opened();
+      type(fixture, 'headline', 'Typing');
+      await fixture.whenStable();
+
+      hub.updates.next(creative);
+      await fixture.whenStable();
+
+      expect(field(fixture, 'headline').value).toBe('Typing');
+      expect(text(fixture)).not.toContain('updated this Creative');
+    });
+
+    it('leaves the group and disposes the connection when destroyed', async () => {
+      const fixture = await opened();
+
+      fixture.destroy();
+
+      expect(hub.dispose).toHaveBeenCalledTimes(1);
+    });
+
+    it('stops listening to updates once destroyed', async () => {
+      const fixture = await opened();
+      fixture.destroy();
+      expect(hub.updates.observed).toBe(false);
     });
   });
 

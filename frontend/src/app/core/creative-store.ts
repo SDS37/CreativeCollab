@@ -2,6 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { inject, Service, signal } from '@angular/core';
 import { firstValueFrom, Observable, Subscription } from 'rxjs';
 import { Creative, CreativeFields } from './creative.model';
+import { DisplayName } from './display-name';
 import { CreativesApi } from './creatives-api';
 import { rebase } from './rebase';
 
@@ -18,6 +19,7 @@ export interface ApiError {
 @Service()
 export class CreativeStore {
   private readonly api = inject(CreativesApi);
+  private readonly displayName = inject(DisplayName);
 
   private readonly creativesState = signal<Creative[]>([]);
   private readonly selectedState = signal<Creative | null>(null);
@@ -25,6 +27,7 @@ export class CreativeStore {
   private readonly savingState = signal(false);
   private readonly errorState = signal<ApiError | null>(null);
   private readonly conflictState = signal<Creative | null>(null);
+  private readonly remoteUpdateState = signal<Creative | null>(null);
 
   readonly creatives = this.creativesState.asReadonly();
   readonly selected = this.selectedState.asReadonly();
@@ -33,18 +36,22 @@ export class CreativeStore {
   readonly error = this.errorState.asReadonly();
   /** The latest Creative, set when a save was rejected as a Conflict. Not an error. */
   readonly conflict = this.conflictState.asReadonly();
+  /** A newer saved copy heard about while the Collaborator has a Draft. Not yet shown in the form. */
+  readonly remoteUpdate = this.remoteUpdateState.asReadonly();
 
   private inFlight: Subscription | undefined;
 
   loadList(): void {
     this.selectedState.set(null);
     this.conflictState.set(null);
+    this.remoteUpdateState.set(null);
     this.load(this.api.list(), (creatives) => this.creativesState.set(creatives));
   }
 
   open(id: number): void {
     this.selectedState.set(null);
     this.conflictState.set(null);
+    this.remoteUpdateState.set(null);
     this.load(this.api.get(id), (creative) => this.selectedState.set(creative));
   }
 
@@ -53,6 +60,7 @@ export class CreativeStore {
     this.inFlight?.unsubscribe();
     this.selectedState.set(null);
     this.conflictState.set(null);
+    this.remoteUpdateState.set(null);
     this.loadingState.set(false);
     this.errorState.set(null);
   }
@@ -84,6 +92,43 @@ export class CreativeStore {
     return this.update(id, rebase(loaded, draft, latest), latest.version);
   }
 
+  /**
+   * Handles a Creative saved by someone (the hub also echoes my own saves back).
+   * A Draft is never overwritten: the form only changes when it is clean.
+   */
+  receiveUpdate(incoming: Creative, formIsDirty: boolean): void {
+    const selected = this.selectedState();
+    if (!selected || incoming.id !== selected.id) {
+      return;
+    }
+    const conflict = this.conflictState();
+    const known = Math.max(selected.version, this.remoteUpdateState()?.version ?? 0, conflict?.version ?? 0);
+    if (incoming.version <= known) {
+      return;
+    }
+    // The echo of my own save can arrive before the HTTP response that carries the same Creative.
+    if (this.savingState() && incoming.updatedBy === this.displayName.value()) {
+      return;
+    }
+    if (conflict) {
+      this.conflictState.set(incoming);
+    } else if (formIsDirty) {
+      this.remoteUpdateState.set(incoming);
+    } else {
+      this.selectedState.set(incoming);
+      this.remoteUpdateState.set(null);
+    }
+  }
+
+  /** Adopts the newest remote update, discarding the Draft. */
+  loadRemote(): void {
+    const latest = this.remoteUpdateState();
+    if (latest) {
+      this.selectedState.set(latest);
+      this.remoteUpdateState.set(null);
+    }
+  }
+
   private load<T>(request: Observable<T>, onResult: (result: T) => void): void {
     this.inFlight?.unsubscribe();
     this.loadingState.set(true);
@@ -105,13 +150,22 @@ export class CreativeStore {
     this.errorState.set(null);
     try {
       const saved = await firstValueFrom(request);
-      this.selectedState.set(saved);
+      const current = this.selectedState();
+      // A live update may have been adopted while this save was in flight; never go backwards.
+      if (!current || saved.version >= current.version) {
+        this.selectedState.set(saved);
+      }
       this.conflictState.set(null);
+      const remote = this.remoteUpdateState();
+      if (remote && remote.version <= saved.version) {
+        this.remoteUpdateState.set(null);
+      }
       return saved;
     } catch (error) {
       const latest = conflictOf(error);
       if (latest) {
         this.conflictState.set(latest);
+        this.remoteUpdateState.set(null);
       } else {
         this.errorState.set(toApiError(error));
       }
