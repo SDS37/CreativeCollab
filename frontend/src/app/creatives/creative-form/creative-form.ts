@@ -48,22 +48,22 @@ export class CreativeForm {
     Object.fromEntries(Object.entries(this.fieldErrors()).map(([key, list]) => [key, list.join(' ')])),
   );
 
-  constructor() {
-    this.form.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => this.draftChange.emit(this.draft()));
+  private readonly emitDraft = this.form.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {
+    this.draftChange.emit(this.draft());
+  });
 
-    effect(() => {
-      const creative = this.creative();
-      untracked(() => {
-        this.form.reset({
-          name: creative?.name ?? '',
-          headline: creative?.headline ?? '',
-          body: creative?.body ?? '',
-          cta: creative?.cta ?? '',
-          imageUrl: creative?.imageUrl ?? '',
-        });
+  private readonly adoptCreative = effect(() => {
+    const creative = this.creative();
+    untracked(() => {
+      this.form.reset({
+        name: creative?.name ?? '',
+        headline: creative?.headline ?? '',
+        body: creative?.body ?? '',
+        cta: creative?.cta ?? '',
+        imageUrl: creative?.imageUrl ?? '',
       });
     });
-  }
+  });
 
   protected submit(): void {
     if (this.form.valid && !this.saving()) {

@@ -7,9 +7,9 @@
 </header>
 
 @if (summary()) {
-  <app-presence-bar [names]="hub.presence()" />
+  <app-presence-bar [names]="openSessions()" />
 }
-@if (hub.unavailable()) {
+@if (liveUpdatesUnavailable()) {
   <p class="live-off" role="status">Live updates are unavailable. Changes by others will not appear until you reload.</p>
 }
 

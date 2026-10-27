@@ -53,25 +53,28 @@ export class CreativeEditPage {
   protected readonly showForm = computed(() => !this.store.loading() && !this.loadFailed());
   protected readonly fieldErrors = computed(() => this.store.error()?.fieldErrors ?? {});
 
-  constructor() {
-    this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
-      const raw = params.get('id');
-      const id = raw;
-      this.id.set(id);
-      this.load();
-      if (id === null) {
-        void this.hub.leave();
-      } else {
-        void this.hub.join(id, this.displayName.value());
-      }
-    });
+  /** Sessions that currently have this Creative open. The template does not reach into the hub. */
+  protected readonly openSessions = computed(() => this.hub.presence());
+  protected readonly liveUpdatesUnavailable = computed(() => this.hub.unavailable());
 
-    this.hub.updated
-      .pipe(takeUntilDestroyed())
-      .subscribe((creative) => this.store.receiveUpdate(creative, this.isDirty()));
+  private readonly followRoute = this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
+    const id = params.get('id');
+    this.id.set(id);
+    this.load();
+    if (id === null) {
+      void this.hub.leave();
+    } else {
+      void this.hub.join(id, this.displayName.value());
+    }
+  });
 
-    inject(DestroyRef).onDestroy(() => void this.hub.dispose());
-  }
+  private readonly followUpdates = this.hub.updated
+    .pipe(takeUntilDestroyed())
+    .subscribe((creative) => this.store.receiveUpdate(creative, this.isDirty()));
+
+  private readonly disposeHub = inject(DestroyRef).onDestroy(() => {
+    void this.hub.dispose();
+  });
 
   protected load(): void {
     const id = this.id();
