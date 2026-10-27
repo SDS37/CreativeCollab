@@ -19,7 +19,7 @@ The app is done when a colleague can run two browsers against one API and every 
 - [x] The Angular app asks for and remembers a Display name, then lists, opens, creates, and edits a Creative, with explicit loading and error states (tested against mocked HTTP; not yet run against the real API)
 - [x] A Conflict leaves the Draft on screen and offers Load latest and Keep my edits (tested against a mocked 409; not yet run against the real API)
 - [x] A `CreativeUpdated` event does not overwrite a dirty Draft. A clean form updates silently, and the edit page shows Presence (tested with a fake hub; not yet run against the real hub)
-- [ ] The root README is a runbook for the API and the Angular app
+- [x] The root README is a runbook for the API and the Angular app
 
 ## Not in this definition
 

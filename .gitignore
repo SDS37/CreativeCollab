@@ -5,3 +5,4 @@ obj/
 *.db-wal
 .vs/
 node_modules/
+.claude/
