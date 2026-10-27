@@ -1,8 +1,9 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Service } from '@angular/core';
-import { Observable } from 'rxjs';
+import { map, Observable } from 'rxjs';
+import * as z from 'zod';
 import { CREATIVES_URL } from './api-config';
-import { Creative, CreativeFields } from './creative.model';
+import { Creative, creativeSchema, CreativeFields } from './creative.model';
 import { DisplayName } from './display-name';
 
 /** Thin wrapper over the Creatives HTTP endpoints. Errors are left raw for the store to translate. */
@@ -12,19 +13,23 @@ export class CreativesApi {
   private readonly displayName = inject(DisplayName);
 
   list(): Observable<Creative[]> {
-    return this.http.get<Creative[]>(CREATIVES_URL);
+    return this.http.get<unknown>(CREATIVES_URL).pipe(map((body) => z.array(creativeSchema).parse(body)));
   }
 
   get(id: string): Observable<Creative> {
-    return this.http.get<Creative>(`${CREATIVES_URL}/${id}`);
+    return this.http.get<unknown>(`${CREATIVES_URL}/${id}`).pipe(map((body) => creativeSchema.parse(body)));
   }
 
   create(fields: CreativeFields): Observable<Creative> {
-    return this.http.post<Creative>(CREATIVES_URL, this.body(fields));
+    return this.http
+      .post<unknown>(CREATIVES_URL, this.body(fields))
+      .pipe(map((body) => creativeSchema.parse(body)));
   }
 
   update(id: string, fields: CreativeFields, version: number): Observable<Creative> {
-    return this.http.put<Creative>(`${CREATIVES_URL}/${id}`, { ...this.body(fields), version });
+    return this.http
+      .put<unknown>(`${CREATIVES_URL}/${id}`, { ...this.body(fields), version })
+      .pipe(map((body) => creativeSchema.parse(body)));
   }
 
   private body(fields: CreativeFields) {

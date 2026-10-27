@@ -123,6 +123,16 @@ describe('CreativeHubService', () => {
     expect(seen).toEqual([creative]);
   });
 
+  it('ignores a CreativeUpdated that is not a Creative', async () => {
+    await hub.join('1', 'Ada');
+    const seen: Creative[] = [];
+    hub.updated.subscribe((c) => seen.push(c));
+
+    connection.raise('CreativeUpdated', { id: '1' });
+
+    expect(seen).toEqual([]);
+  });
+
   it('joins again after a reconnect and replaces Presence', async () => {
     connection.joinResults.push(['Ada', 'Linus']);
     await hub.join('1', 'Ada');

@@ -2,7 +2,7 @@ import { inject, InjectionToken, Service, signal } from '@angular/core';
 import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@microsoft/signalr';
 import { Observable, Subject } from 'rxjs';
 import { HUB_URL } from './api-config';
-import { Creative } from './creative.model';
+import { Creative, creativeSchema } from './creative.model';
 
 /** Builds the SignalR connection. Replaced in tests with a fake. */
 export const HUB_CONNECTION_FACTORY = new InjectionToken<() => HubConnection>('HUB_CONNECTION_FACTORY', {
@@ -95,7 +95,12 @@ export class CreativeHubService {
     const connection = this.createConnection();
     this.connection = connection;
 
-    connection.on('CreativeUpdated', (creative: Creative) => this.updates.next(creative));
+    connection.on('CreativeUpdated', (creative: unknown) => {
+      const parsed = creativeSchema.safeParse(creative);
+      if (parsed.success) {
+        this.updates.next(parsed.data);
+      }
+    });
     connection.on('UserJoined', (name: string) => this.presenceState.update((names) => [...names, name]));
     connection.on('UserLeft', (name: string) =>
       this.presenceState.update((names) => {

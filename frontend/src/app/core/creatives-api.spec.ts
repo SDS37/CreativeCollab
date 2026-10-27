@@ -89,4 +89,13 @@ describe('CreativesApi', () => {
     });
     req.flush(creative);
   });
+
+  it('rejects a body that is not a Creative', () => {
+    let failed = false;
+    api.list().subscribe({ error: () => (failed = true) });
+
+    http.expectOne(BASE).flush([{ id: '1' }]);
+
+    expect(failed).toBe(true);
+  });
 });

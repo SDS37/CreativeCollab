@@ -380,9 +380,9 @@ describe('CreativeEditPage', () => {
 
     const req = http.expectOne(BASE);
     expect(req.request.method).toBe('POST');
-    req.flush({ ...creative, id: 8, version: 1 });
+    req.flush({ ...creative, id: '8', version: 1 });
     await fixture.whenStable();
 
-    expect(navigate).toHaveBeenCalledWith(['/creatives', 8], { replaceUrl: true });
+    expect(navigate).toHaveBeenCalledWith(['/creatives', '8'], { replaceUrl: true });
   });
 });

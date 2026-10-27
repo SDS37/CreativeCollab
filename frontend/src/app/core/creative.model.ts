@@ -1,14 +1,19 @@
-export interface Creative {
-  id: string;
-  name: string;
-  headline: string;
-  body: string;
-  cta: string;
-  imageUrl: string | null;
-  version: number;
-  updatedAt: string;
-  updatedBy: string;
-}
+import * as z from 'zod';
+
+/** A Creative as the API and the hub send it. */
+export const creativeSchema = z.object({
+  id: z.string().min(1),
+  name: z.string(),
+  headline: z.string(),
+  body: z.string(),
+  cta: z.string(),
+  imageUrl: z.string().nullable(),
+  version: z.number().int().positive(),
+  updatedAt: z.iso.datetime({ offset: true }),
+  updatedBy: z.string(),
+});
+
+export type Creative = z.infer<typeof creativeSchema>;
 
 /** The editable fields of a Creative: what a Draft holds and what a save sends. */
 export interface CreativeFields {

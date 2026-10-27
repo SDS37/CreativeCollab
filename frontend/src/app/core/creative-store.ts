@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { inject, Service, signal } from '@angular/core';
 import { firstValueFrom, Observable, Subscription } from 'rxjs';
-import { Creative, CreativeFields } from './creative.model';
+import { Creative, creativeSchema, CreativeFields } from './creative.model';
 import { DisplayName } from './display-name';
 import { CreativesApi } from './creatives-api';
 import { rebase } from './rebase';
@@ -181,8 +181,8 @@ function conflictOf(error: unknown): Creative | null {
   if (!(error instanceof HttpErrorResponse) || error.status !== 409) {
     return null;
   }
-  const current = (error.error as { current?: Creative } | null)?.current;
-  return current ?? null;
+  const parsed = creativeSchema.safeParse((error.error as { current?: unknown } | null)?.current);
+  return parsed.success ? parsed.data : null;
 }
 
 function toApiError(error: unknown): ApiError {
