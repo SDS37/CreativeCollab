@@ -2,14 +2,14 @@
 
 A small real-time collaborative editor for ad creatives. It handles concurrent edits with optimistic concurrency and SignalR, and it demonstrates senior-level code-quality patterns.
 
-Status: **plan agreed, implementation not started.**
+Status: **plan agreed. Step 1 (API walking skeleton: list, get, create, in-memory store) is in `backend/`. Steps 2–8 are not started.** The map of what that means is [docs/architecture.md](docs/architecture.md). Done versus remaining is [docs/DoD.md](docs/DoD.md).
 
 ## Decisions (from design review)
 
 ### Repo and tooling
 - Monorepo: `/backend` and `/frontend`.
 - Backend is one API project plus one test project, organised in folders (`Endpoints/`, `Services/`, `Data/`, `Hubs/`, `Validation/`). No multi-project clean-architecture split.
-- .NET SDK 10.0.x is installed. **Node is currently v14 and must be upgraded to a current LTS before any Angular 22 work.** The backend is built first so nothing is blocked.
+- .NET SDK 10.0.x is installed. Node 24 is the nvm default, which is what Angular 22 needs. The frontend is still not scaffolded. The backend is built first so nothing is blocked.
 - No commits are made unless the user asks.
 - Tests are written alongside each step, not strict TDD.
 
