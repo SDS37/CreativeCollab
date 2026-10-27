@@ -46,6 +46,9 @@
       "args": [
         "mcp-server-fetch"
       ]
+    },
+    "microsoft-learn": {
+      "url": "https://learn.microsoft.com/api/mcp"
     }
   }
 }
