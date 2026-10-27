@@ -1,6 +1,6 @@
 # Frontend
 
-The Angular app for CreativeCollab. How to run it, and how it fits the API, is in the [root README](../README.md). What each screen and service is is in [docs/architecture.md](../docs/architecture.md).
+The Angular app for CreativeCollab. How to run it, and how it fits the API, is in the [root README](../README.md). What each screen, the signal store, and each service is is in [docs/architecture.md](../docs/architecture.md).
 
 ```bash
 npm ci
