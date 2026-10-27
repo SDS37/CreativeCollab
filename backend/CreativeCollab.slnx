@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="CreativeCollab.Api.Tests/CreativeCollab.Api.Tests.csproj" />
+  <Project Path="CreativeCollab.Api/CreativeCollab.Api.csproj" />
+</Solution>
