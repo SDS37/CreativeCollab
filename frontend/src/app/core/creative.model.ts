@@ -19,6 +19,17 @@ export interface CreativeFields {
   imageUrl: string;
 }
 
+/** The editable fields of a saved Creative, with an absent image as an empty string. */
+export function toFields(creative: Creative): CreativeFields {
+  return {
+    name: creative.name,
+    headline: creative.headline,
+    body: creative.body,
+    cta: creative.cta,
+    imageUrl: creative.imageUrl ?? '',
+  };
+}
+
 export const EDITABLE_FIELDS: readonly (keyof CreativeFields)[] = [
   'name',
   'headline',

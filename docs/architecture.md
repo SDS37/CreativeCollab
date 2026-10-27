@@ -84,11 +84,14 @@ cd frontend && npm test -- --watch=false
 |---|---|---|
 | `DisplayName` | `core/display-name.ts` | The Collaborator's Display name in localStorage. Trusted, not authenticated. The shell shows a prompt until it is set and lets it be changed |
 | `CreativesApi` | `core/creatives-api.ts` | One method per endpoint. Adds the Display name to create and update, and the loaded Version to update. An empty image URL is omitted |
-| `CreativeStore` | `core/creative-store.ts` | Signals: `creatives`, `selected`, `loading`, `saving`, `error`. Turns HTTP failures into network, not-found, validation (field messages) or server errors. A newer load cancels an older one |
+| `CreativeStore` | `core/creative-store.ts` | Signals: `creatives`, `selected`, `loading`, `saving`, `error`, `conflict`. A 409 with `current` sets `conflict` (not `error`) and leaves `selected` as the Version the Collaborator loaded. `loadLatest` adopts `conflict`; `keepMyEdits` Rebases and saves with `current.version`. Turns HTTP failures into network, not-found, validation (field messages) or server errors. A newer load cancels an older one |
 | `CreativeListPage`, `CreativeEditPage` | `creatives/` | Containers. The edit page serves `/creatives/new` and `/creatives/:id`. They show loading, error with retry, and the form |
-| `creative-list`, `creative-form`, `display-name-prompt` | `creatives/`, `display-name-prompt/` | Presentational: `input()` and `output()` only. The form emits its Draft as it changes and resets only when handed a different Creative |
+| `Rebase` | `core/rebase.ts` | Pure function: fields where the Draft differs from the loaded Creative keep the Draft value, all others take the latest. An empty and an absent image URL are equal |
+| `creative-list`, `creative-form`, `conflict-banner`, `display-name-prompt` | `creatives/`, `display-name-prompt/` | Presentational: `input()` and `output()` only. The form emits its Draft as it changes and resets only when handed a different Creative |
 
-Not built yet in the frontend: the Conflict banner (issue 8) and the hub client with Presence and live updates (issue 9).
+On a Conflict the Draft stays in the form and the banner names who saved (`current.updatedBy`). It offers Load latest and Keep my edits, with no merge or diff UI.
+
+Not built yet in the frontend: the hub client with Presence and live updates (issue 9).
 
 ## Folders
 

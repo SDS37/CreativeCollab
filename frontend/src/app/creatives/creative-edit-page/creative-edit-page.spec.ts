@@ -131,6 +131,83 @@ describe('CreativeEditPage', () => {
     expect(field(fixture, 'headline').value).toBe('Fresher');
   });
 
+  describe('Conflict', () => {
+    const conflictStatus = { status: 409, statusText: 'Conflict' };
+    const latest = { ...creative, version: 3, headline: 'Grace headline', body: 'Grace body', updatedBy: 'Grace' };
+
+    async function conflicted(): Promise<ComponentFixture<CreativeEditPage>> {
+      const fixture = setup('3');
+      await fixture.whenStable();
+      http.expectOne(`${BASE}/3`).flush(creative);
+      await fixture.whenStable();
+
+      type(fixture, 'headline', 'My headline');
+      type(fixture, 'cta', 'My cta');
+      submit(fixture);
+      http.expectOne(`${BASE}/3`).flush({ current: latest }, conflictStatus);
+      await fixture.whenStable();
+      return fixture;
+    }
+
+    function button(fixture: ComponentFixture<unknown>, selector: string): HTMLButtonElement {
+      return (fixture.nativeElement as HTMLElement).querySelector(selector) as HTMLButtonElement;
+    }
+
+    it('keeps the Draft on screen and names who saved', async () => {
+      const fixture = await conflicted();
+
+      expect(field(fixture, 'headline').value).toBe('My headline');
+      expect(field(fixture, 'cta').value).toBe('My cta');
+      expect(text(fixture)).toContain('Grace saved a newer version');
+    });
+
+    it('Load latest replaces the form with the server copy and hides the banner', async () => {
+      const fixture = await conflicted();
+
+      button(fixture, 'button.load-latest').click();
+      await fixture.whenStable();
+
+      expect(field(fixture, 'headline').value).toBe('Grace headline');
+      expect(field(fixture, 'cta').value).toBe('Shop');
+      expect(text(fixture)).not.toContain('saved a newer version');
+      expect(text(fixture)).toContain('Version 3');
+    });
+
+    it('Keep my edits saves only my changed fields onto the latest Version', async () => {
+      const fixture = await conflicted();
+
+      button(fixture, 'button.keep-mine').click();
+
+      const req = http.expectOne(`${BASE}/3`);
+      expect(req.request.method).toBe('PUT');
+      expect(req.request.body).toMatchObject({
+        headline: 'My headline',
+        cta: 'My cta',
+        body: 'Grace body',
+        version: 3,
+      });
+      req.flush({ ...latest, headline: 'My headline', cta: 'My cta', version: 4 });
+      await fixture.whenStable();
+
+      expect(field(fixture, 'body').value).toBe('Grace body');
+      expect(text(fixture)).not.toContain('saved a newer version');
+      expect(text(fixture)).toContain('Version 4');
+    });
+
+    it('says Another Collaborator when the newer Version has no recorded name', async () => {
+      const fixture = setup('3');
+      await fixture.whenStable();
+      http.expectOne(`${BASE}/3`).flush(creative);
+      await fixture.whenStable();
+      type(fixture, 'cta', 'x');
+      submit(fixture);
+      http.expectOne(`${BASE}/3`).flush({ current: { ...latest, updatedBy: '' } }, conflictStatus);
+      await fixture.whenStable();
+
+      expect(text(fixture)).toContain('Another Collaborator saved a newer version');
+    });
+  });
+
   it('creates a new Creative and opens it', async () => {
     const fixture = setup(null);
     const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);

@@ -14,6 +14,15 @@
   <p role="alert" class="error">{{ error.message }}</p>
 }
 
+@if (store.conflict(); as conflict) {
+  <app-conflict-banner
+    [conflict]="conflict"
+    [saving]="store.saving()"
+    (loadLatest)="loadLatest()"
+    (keepMine)="keepMyEdits()"
+  />
+}
+
 @if (canRetry()) {
   <button type="button" class="retry" (click)="load()">Try again</button>
 }
@@ -23,6 +32,7 @@
     [creative]="store.selected()"
     [saving]="store.saving()"
     [fieldErrors]="fieldErrors()"
+    (draftChange)="onDraftChange($event)"
     (saved)="save($event)"
   />
 }

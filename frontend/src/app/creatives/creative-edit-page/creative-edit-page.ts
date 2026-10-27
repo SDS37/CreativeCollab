@@ -3,11 +3,12 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CreativeStore } from '../../core/creative-store';
 import { CreativeFields } from '../../core/creative.model';
+import { ConflictBanner } from '../conflict-banner/conflict-banner';
 import { CreativeForm } from '../creative-form/creative-form';
 
 @Component({
   selector: 'app-creative-edit-page',
-  imports: [CreativeForm, RouterLink],
+  imports: [ConflictBanner, CreativeForm, RouterLink],
   templateUrl: './creative-edit-page.html',
 })
 export class CreativeEditPage {
@@ -17,6 +18,9 @@ export class CreativeEditPage {
 
   /** The id in the route, or null on the create page. */
   private readonly id = signal<number | null>(null);
+
+  /** The Collaborator's unsaved edits, as last reported by the form. */
+  private draft: CreativeFields | null = null;
 
   protected readonly heading = computed(() => (this.id() === null ? 'New Creative' : 'Edit Creative'));
 
@@ -51,6 +55,21 @@ export class CreativeEditPage {
       this.store.startNew();
     } else {
       this.store.open(id);
+    }
+  }
+
+  protected onDraftChange(draft: CreativeFields): void {
+    this.draft = draft;
+  }
+
+  protected loadLatest(): void {
+    this.store.loadLatest();
+  }
+
+  protected async keepMyEdits(): Promise<void> {
+    const id = this.id();
+    if (id !== null && this.draft) {
+      await this.store.keepMyEdits(id, this.draft);
     }
   }
 

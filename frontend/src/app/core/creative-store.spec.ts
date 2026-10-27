@@ -113,6 +113,112 @@ describe('CreativeStore', () => {
     });
   });
 
+  describe('Conflict', () => {
+    const conflictBody = (current: Creative) => ({ title: 'Conflict', status: 409, current });
+    const conflictStatus = { status: 409, statusText: 'Conflict' };
+
+    function openLoaded(): void {
+      store.open(1);
+      http.expectOne(`${BASE}/1`).flush({ ...creative(1, 1), headline: 'Mine-base' });
+    }
+
+    it('keeps the selected Creative and records the latest as a Conflict, not an error', async () => {
+      openLoaded();
+      const result = store.update(1, fields, 1);
+      http
+        .expectOne(`${BASE}/1`)
+        .flush(conflictBody({ ...creative(1, 2), updatedBy: 'Grace' }), conflictStatus);
+
+      expect(await result).toBeNull();
+      expect(store.conflict()?.version).toBe(2);
+      expect(store.conflict()?.updatedBy).toBe('Grace');
+      expect(store.selected()?.version).toBe(1);
+      expect(store.error()).toBeNull();
+      expect(store.saving()).toBe(false);
+    });
+
+    it('treats a 409 without a latest Creative as a server error', async () => {
+      openLoaded();
+      const result = store.update(1, fields, 1);
+      http.expectOne(`${BASE}/1`).flush({ title: 'Conflict' }, conflictStatus);
+
+      expect(await result).toBeNull();
+      expect(store.conflict()).toBeNull();
+      expect(store.error()?.kind).toBe('server');
+    });
+
+    it('loadLatest adopts the latest Creative and clears the Conflict', async () => {
+      openLoaded();
+      const result = store.update(1, fields, 1);
+      http.expectOne(`${BASE}/1`).flush(conflictBody(creative(1, 2)), conflictStatus);
+      await result;
+
+      store.loadLatest();
+
+      expect(store.selected()?.version).toBe(2);
+      expect(store.conflict()).toBeNull();
+    });
+
+    it('keepMyEdits saves only the changed fields over the latest values, using the latest Version', async () => {
+      openLoaded();
+      const first = store.update(1, fields, 1);
+      const latest = { ...creative(1, 5), headline: 'Theirs', body: 'Their body' };
+      http.expectOne(`${BASE}/1`).flush(conflictBody(latest), conflictStatus);
+      await first;
+
+      const draft = { ...fields, headline: 'Mine-base', cta: 'My cta' };
+      const second = store.keepMyEdits(1, draft);
+
+      const req = http.expectOne(`${BASE}/1`);
+      expect(req.request.method).toBe('PUT');
+      expect(req.request.body).toMatchObject({
+        headline: 'Theirs',
+        body: 'Their body',
+        cta: 'My cta',
+        name: 'n',
+        version: 5,
+      });
+      req.flush({ ...latest, cta: 'My cta', version: 6 });
+
+      expect((await second)?.version).toBe(6);
+      expect(store.conflict()).toBeNull();
+      expect(store.selected()?.version).toBe(6);
+    });
+
+    it('a second Conflict during keepMyEdits replaces the Conflict and still rebases from the original base', async () => {
+      openLoaded();
+      const first = store.update(1, fields, 1);
+      http.expectOne(`${BASE}/1`).flush(conflictBody({ ...creative(1, 2), body: 'v2' }), conflictStatus);
+      await first;
+
+      const draft = { ...fields, headline: 'Mine-base', cta: 'My cta' };
+      const second = store.keepMyEdits(1, draft);
+      http
+        .expectOne(`${BASE}/1`)
+        .flush(conflictBody({ ...creative(1, 3), body: 'v3', updatedBy: 'Linus' }), conflictStatus);
+      expect(await second).toBeNull();
+      expect(store.conflict()?.version).toBe(3);
+      expect(store.selected()?.version).toBe(1);
+
+      const third = store.keepMyEdits(1, draft);
+      const req = http.expectOne(`${BASE}/1`);
+      expect(req.request.body).toMatchObject({ body: 'v3', cta: 'My cta', version: 3 });
+      req.flush(creative(1, 4));
+      await third;
+    });
+
+    it('opening another Creative clears a Conflict', async () => {
+      openLoaded();
+      const result = store.update(1, fields, 1);
+      http.expectOne(`${BASE}/1`).flush(conflictBody(creative(1, 2)), conflictStatus);
+      await result;
+
+      store.open(2);
+      expect(store.conflict()).toBeNull();
+      http.expectOne(`${BASE}/2`).flush(creative(2));
+    });
+  });
+
   describe('update', () => {
     it('returns the saved Creative with its new Version', async () => {
       const result = store.update(1, fields, 2);

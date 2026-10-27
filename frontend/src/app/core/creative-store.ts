@@ -3,6 +3,7 @@ import { inject, Service, signal } from '@angular/core';
 import { firstValueFrom, Observable, Subscription } from 'rxjs';
 import { Creative, CreativeFields } from './creative.model';
 import { CreativesApi } from './creatives-api';
+import { rebase } from './rebase';
 
 export type ApiErrorKind = 'network' | 'not-found' | 'validation' | 'server';
 
@@ -23,22 +24,27 @@ export class CreativeStore {
   private readonly loadingState = signal(false);
   private readonly savingState = signal(false);
   private readonly errorState = signal<ApiError | null>(null);
+  private readonly conflictState = signal<Creative | null>(null);
 
   readonly creatives = this.creativesState.asReadonly();
   readonly selected = this.selectedState.asReadonly();
   readonly loading = this.loadingState.asReadonly();
   readonly saving = this.savingState.asReadonly();
   readonly error = this.errorState.asReadonly();
+  /** The latest Creative, set when a save was rejected as a Conflict. Not an error. */
+  readonly conflict = this.conflictState.asReadonly();
 
   private inFlight: Subscription | undefined;
 
   loadList(): void {
     this.selectedState.set(null);
+    this.conflictState.set(null);
     this.load(this.api.list(), (creatives) => this.creativesState.set(creatives));
   }
 
   open(id: number): void {
     this.selectedState.set(null);
+    this.conflictState.set(null);
     this.load(this.api.get(id), (creative) => this.selectedState.set(creative));
   }
 
@@ -46,6 +52,7 @@ export class CreativeStore {
   startNew(): void {
     this.inFlight?.unsubscribe();
     this.selectedState.set(null);
+    this.conflictState.set(null);
     this.loadingState.set(false);
     this.errorState.set(null);
   }
@@ -56,6 +63,25 @@ export class CreativeStore {
 
   update(id: number, fields: CreativeFields, version: number): Promise<Creative | null> {
     return this.save(this.api.update(id, fields, version));
+  }
+
+  /** Discards the Draft: the latest Creative from the Conflict becomes the selected one. */
+  loadLatest(): void {
+    const latest = this.conflictState();
+    if (latest) {
+      this.selectedState.set(latest);
+      this.conflictState.set(null);
+    }
+  }
+
+  /** Rebase: re-applies the Draft's changed fields onto the latest Creative and saves again. */
+  keepMyEdits(id: number, draft: CreativeFields): Promise<Creative | null> {
+    const loaded = this.selectedState();
+    const latest = this.conflictState();
+    if (!loaded || !latest) {
+      return Promise.resolve(null);
+    }
+    return this.update(id, rebase(loaded, draft, latest), latest.version);
   }
 
   private load<T>(request: Observable<T>, onResult: (result: T) => void): void {
@@ -80,14 +106,29 @@ export class CreativeStore {
     try {
       const saved = await firstValueFrom(request);
       this.selectedState.set(saved);
+      this.conflictState.set(null);
       return saved;
     } catch (error) {
-      this.errorState.set(toApiError(error));
+      const latest = conflictOf(error);
+      if (latest) {
+        this.conflictState.set(latest);
+      } else {
+        this.errorState.set(toApiError(error));
+      }
       return null;
     } finally {
       this.savingState.set(false);
     }
   }
+}
+
+/** The latest Creative carried by a 409, or null when the error is not a usable Conflict. */
+function conflictOf(error: unknown): Creative | null {
+  if (!(error instanceof HttpErrorResponse) || error.status !== 409) {
+    return null;
+  }
+  const current = (error.error as { current?: Creative } | null)?.current;
+  return current ?? null;
 }
 
 function toApiError(error: unknown): ApiError {
