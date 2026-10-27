@@ -5,4 +5,7 @@ obj/
 *.db-wal
 .vs/
 node_modules/
+playwright-report/
+test-results/
+blob-report/
 .claude/

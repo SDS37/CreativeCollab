@@ -28,6 +28,17 @@ npm test       # service, store and component tests
 
 To see a Conflict, open the same Creative in two browser windows under different Display names, save in one, then save in the other.
 
+**Playwright** (starts the API and the Angular app itself when they are not already running):
+
+```bash
+cd e2e
+npm ci
+npx playwright install chromium
+npm test
+```
+
+CI runs the backend tests, the Angular tests, and Playwright on every push to `main` and every pull request.
+
 ## Known limitations
 
 Presence is single-instance, the Display name is trusted, and DNS rebinding is not fully mitigated. Details are in [REVIEW_NOTES.md](REVIEW_NOTES.md).
