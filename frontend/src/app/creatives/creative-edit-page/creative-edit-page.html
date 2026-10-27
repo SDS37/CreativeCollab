@@ -1,0 +1,49 @@
+<header class="page-header">
+  <a routerLink="/creatives">&larr; All Creatives</a>
+  <h1>{{ heading() }}</h1>
+  @if (summary()) {
+    <p class="summary">{{ summary() }}</p>
+  }
+</header>
+
+@if (summary()) {
+  <app-presence-bar [names]="openSessions()" />
+}
+@if (liveUpdatesUnavailable()) {
+  <p class="live-off" role="status">Live updates are unavailable. Changes by others will not appear until you reload.</p>
+}
+
+@if (store.loading()) {
+  <p role="status">Loading…</p>
+}
+
+@if (store.error(); as error) {
+  <p role="alert" class="error">{{ error.message }}</p>
+}
+
+@if (store.conflict(); as conflict) {
+  <app-conflict-banner
+    [conflict]="conflict"
+    [saving]="store.saving()"
+    (loadLatest)="loadLatest()"
+    (keepMine)="keepMyEdits()"
+  />
+}
+
+@if (store.remoteUpdate(); as update) {
+  <app-remote-update-notice [update]="update" (loadLatest)="loadRemote()" />
+}
+
+@if (canRetry()) {
+  <button type="button" class="retry" (click)="load()">Try again</button>
+}
+
+@if (showForm()) {
+  <app-creative-form
+    [creative]="store.selected()"
+    [saving]="store.saving()"
+    [fieldErrors]="fieldErrors()"
+    (draftChange)="onDraftChange($event)"
+    (saved)="save($event)"
+  />
+}

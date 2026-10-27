@@ -1,0 +1,15 @@
+<header class="page-header">
+  <h1>Creatives</h1>
+  <a routerLink="/creatives/new">New Creative</a>
+</header>
+
+@if (store.loading()) {
+  <p role="status">Loading…</p>
+} @else if (store.error(); as error) {
+  <p role="alert">{{ error.message }}</p>
+  <button type="button" class="retry" (click)="reload()">Try again</button>
+} @else if (isEmpty()) {
+  <p>No Creatives yet. Create the first one.</p>
+} @else {
+  <app-creative-list [creatives]="store.creatives()" (opened)="open($event)" />
+}
