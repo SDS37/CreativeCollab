@@ -1,5 +1,5 @@
 export interface Creative {
-  id: number;
+  id: string;
   name: string;
   headline: string;
   body: string;

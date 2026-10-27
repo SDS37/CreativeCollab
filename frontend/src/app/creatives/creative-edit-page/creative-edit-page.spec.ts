@@ -12,7 +12,7 @@ import { CreativeEditPage } from './creative-edit-page';
 const BASE = 'http://localhost:5114/api/creatives';
 
 const creative: Creative = {
-  id: 3,
+  id: '3',
   name: 'Spring',
   headline: 'Fresh',
   body: 'Buy now',
@@ -86,6 +86,18 @@ describe('CreativeEditPage', () => {
 
     expect(text(fixture)).not.toContain('Loading');
     expect(field(fixture, 'headline').value).toBe('Fresh');
+  });
+
+  it('opens a Creative by the GUID id the API issues and joins its group with it', async () => {
+    const guid = '41f18372-7214-4fa9-8968-529416310b43';
+    const fixture = setup(guid);
+    await fixture.whenStable();
+
+    http.expectOne(`${BASE}/${guid}`).flush({ ...creative, id: guid });
+    await fixture.whenStable();
+
+    expect(field(fixture, 'headline').value).toBe('Fresh');
+    expect(hub.join).toHaveBeenCalledWith(guid, 'Ada');
   });
 
   it('shows a not-found message for an unknown Creative', async () => {
@@ -236,7 +248,7 @@ describe('CreativeEditPage', () => {
 
     it('joins the Creative group with the Display name', async () => {
       await opened();
-      expect(hub.join).toHaveBeenCalledWith(3, 'Ada');
+      expect(hub.join).toHaveBeenCalledWith('3', 'Ada');
     });
 
     it('does not join anything on the create page', async () => {

@@ -9,7 +9,7 @@ const BASE = 'http://localhost:5114/api/creatives';
 
 function creative(id: number, name: string): Creative {
   return {
-    id,
+    id: String(id),
     name,
     headline: `Headline ${id}`,
     body: 'b',
@@ -73,6 +73,6 @@ describe('CreativeListPage', () => {
 
     ((fixture.nativeElement as HTMLElement).querySelector('button.open') as HTMLButtonElement).click();
 
-    expect(navigate).toHaveBeenCalledWith(['/creatives', 4]);
+    expect(navigate).toHaveBeenCalledWith(['/creatives', '4']);
   });
 });

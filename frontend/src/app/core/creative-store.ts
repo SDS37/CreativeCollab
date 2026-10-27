@@ -48,7 +48,7 @@ export class CreativeStore {
     this.load(this.api.list(), (creatives) => this.creativesState.set(creatives));
   }
 
-  open(id: number): void {
+  open(id: string): void {
     this.selectedState.set(null);
     this.conflictState.set(null);
     this.remoteUpdateState.set(null);
@@ -69,7 +69,7 @@ export class CreativeStore {
     return this.save(this.api.create(fields));
   }
 
-  update(id: number, fields: CreativeFields, version: number): Promise<Creative | null> {
+  update(id: string, fields: CreativeFields, version: number): Promise<Creative | null> {
     return this.save(this.api.update(id, fields, version));
   }
 
@@ -83,7 +83,7 @@ export class CreativeStore {
   }
 
   /** Rebase: re-applies the Draft's changed fields onto the latest Creative and saves again. */
-  keepMyEdits(id: number, draft: CreativeFields): Promise<Creative | null> {
+  keepMyEdits(id: string, draft: CreativeFields): Promise<Creative | null> {
     const loaded = this.selectedState();
     const latest = this.conflictState();
     if (!loaded || !latest) {

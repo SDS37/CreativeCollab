@@ -3,7 +3,7 @@ import { rebase } from './rebase';
 
 function creative(overrides: Partial<Creative> = {}): Creative {
   return {
-    id: 1,
+    id: '1',
     name: 'Spring',
     headline: 'Fresh',
     body: 'Buy now',

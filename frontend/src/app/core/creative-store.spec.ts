@@ -10,7 +10,7 @@ const BASE = 'http://localhost:5114/api/creatives';
 const fields: CreativeFields = { name: 'n', headline: 'h', body: 'b', cta: 'c', imageUrl: '' };
 
 function creative(id: number, version = 1): Creative {
-  return { id, ...fields, imageUrl: null, version, updatedAt: '2026-01-01T00:00:00Z', updatedBy: 'Ada' };
+  return { id: String(id), ...fields, imageUrl: null, version, updatedAt: '2026-01-01T00:00:00Z', updatedBy: 'Ada' };
 }
 
 describe('CreativeStore', () => {
@@ -35,7 +35,7 @@ describe('CreativeStore', () => {
       http.expectOne(BASE).flush([creative(1), creative(2)]);
 
       expect(store.loading()).toBe(false);
-      expect(store.creatives().map((c) => c.id)).toEqual([1, 2]);
+      expect(store.creatives().map((c) => c.id)).toEqual(['1', '2']);
       expect(store.error()).toBeNull();
     });
 
@@ -60,7 +60,7 @@ describe('CreativeStore', () => {
 
   describe('open', () => {
     it('selects the Creative once loaded', () => {
-      store.open(5);
+      store.open('5');
       expect(store.loading()).toBe(true);
       expect(store.selected()).toBeNull();
 
@@ -71,7 +71,7 @@ describe('CreativeStore', () => {
     });
 
     it('reports an unknown id as not found', () => {
-      store.open(99);
+      store.open('99');
       http.expectOne(`${BASE}/99`).flush(null, { status: 404, statusText: 'Not Found' });
 
       expect(store.error()?.kind).toBe('not-found');
@@ -79,9 +79,9 @@ describe('CreativeStore', () => {
     });
 
     it('drops the previously selected Creative while opening another', () => {
-      store.open(1);
+      store.open('1');
       http.expectOne(`${BASE}/1`).flush(creative(1));
-      store.open(2);
+      store.open('2');
       expect(store.selected()).toBeNull();
       http.expectOne(`${BASE}/2`).flush(creative(2));
     });
@@ -94,9 +94,9 @@ describe('CreativeStore', () => {
 
       http.expectOne(BASE).flush(creative(7));
 
-      expect((await result)?.id).toBe(7);
+      expect((await result)?.id).toBe('7');
       expect(store.saving()).toBe(false);
-      expect(store.selected()?.id).toBe(7);
+      expect(store.selected()?.id).toBe('7');
     });
 
     it('turns a 400 into field messages keyed by camelCase field name', async () => {
@@ -118,13 +118,13 @@ describe('CreativeStore', () => {
     const conflictStatus = { status: 409, statusText: 'Conflict' };
 
     function openLoaded(): void {
-      store.open(1);
+      store.open('1');
       http.expectOne(`${BASE}/1`).flush({ ...creative(1, 1), headline: 'Mine-base' });
     }
 
     it('keeps the selected Creative and records the latest as a Conflict, not an error', async () => {
       openLoaded();
-      const result = store.update(1, fields, 1);
+      const result = store.update('1', fields, 1);
       http
         .expectOne(`${BASE}/1`)
         .flush(conflictBody({ ...creative(1, 2), updatedBy: 'Grace' }), conflictStatus);
@@ -139,7 +139,7 @@ describe('CreativeStore', () => {
 
     it('treats a 409 without a latest Creative as a server error', async () => {
       openLoaded();
-      const result = store.update(1, fields, 1);
+      const result = store.update('1', fields, 1);
       http.expectOne(`${BASE}/1`).flush({ title: 'Conflict' }, conflictStatus);
 
       expect(await result).toBeNull();
@@ -149,7 +149,7 @@ describe('CreativeStore', () => {
 
     it('loadLatest adopts the latest Creative and clears the Conflict', async () => {
       openLoaded();
-      const result = store.update(1, fields, 1);
+      const result = store.update('1', fields, 1);
       http.expectOne(`${BASE}/1`).flush(conflictBody(creative(1, 2)), conflictStatus);
       await result;
 
@@ -161,13 +161,13 @@ describe('CreativeStore', () => {
 
     it('keepMyEdits saves only the changed fields over the latest values, using the latest Version', async () => {
       openLoaded();
-      const first = store.update(1, fields, 1);
+      const first = store.update('1', fields, 1);
       const latest = { ...creative(1, 5), headline: 'Theirs', body: 'Their body' };
       http.expectOne(`${BASE}/1`).flush(conflictBody(latest), conflictStatus);
       await first;
 
       const draft = { ...fields, headline: 'Mine-base', cta: 'My cta' };
-      const second = store.keepMyEdits(1, draft);
+      const second = store.keepMyEdits('1', draft);
 
       const req = http.expectOne(`${BASE}/1`);
       expect(req.request.method).toBe('PUT');
@@ -187,12 +187,12 @@ describe('CreativeStore', () => {
 
     it('a second Conflict during keepMyEdits replaces the Conflict and still rebases from the original base', async () => {
       openLoaded();
-      const first = store.update(1, fields, 1);
+      const first = store.update('1', fields, 1);
       http.expectOne(`${BASE}/1`).flush(conflictBody({ ...creative(1, 2), body: 'v2' }), conflictStatus);
       await first;
 
       const draft = { ...fields, headline: 'Mine-base', cta: 'My cta' };
-      const second = store.keepMyEdits(1, draft);
+      const second = store.keepMyEdits('1', draft);
       http
         .expectOne(`${BASE}/1`)
         .flush(conflictBody({ ...creative(1, 3), body: 'v3', updatedBy: 'Linus' }), conflictStatus);
@@ -200,7 +200,7 @@ describe('CreativeStore', () => {
       expect(store.conflict()?.version).toBe(3);
       expect(store.selected()?.version).toBe(1);
 
-      const third = store.keepMyEdits(1, draft);
+      const third = store.keepMyEdits('1', draft);
       const req = http.expectOne(`${BASE}/1`);
       expect(req.request.body).toMatchObject({ body: 'v3', cta: 'My cta', version: 3 });
       req.flush(creative(1, 4));
@@ -209,11 +209,11 @@ describe('CreativeStore', () => {
 
     it('opening another Creative clears a Conflict', async () => {
       openLoaded();
-      const result = store.update(1, fields, 1);
+      const result = store.update('1', fields, 1);
       http.expectOne(`${BASE}/1`).flush(conflictBody(creative(1, 2)), conflictStatus);
       await result;
 
-      store.open(2);
+      store.open('2');
       expect(store.conflict()).toBeNull();
       http.expectOne(`${BASE}/2`).flush(creative(2));
     });
@@ -227,7 +227,7 @@ describe('CreativeStore', () => {
     });
 
     function openLoaded(version = 1): void {
-      store.open(1);
+      store.open('1');
       http.expectOne(`${BASE}/1`).flush(creative(1, version));
     }
 
@@ -276,7 +276,7 @@ describe('CreativeStore', () => {
     it('ignores an update that is not for the open Creative', () => {
       openLoaded();
 
-      store.receiveUpdate({ ...remote(5), id: 99 }, false);
+      store.receiveUpdate({ ...remote(5), id: '99' }, false);
 
       expect(store.selected()?.version).toBe(1);
     });
@@ -288,7 +288,7 @@ describe('CreativeStore', () => {
 
     it('ignores the echo of my own save that arrives before the HTTP response', async () => {
       openLoaded();
-      const saving = store.update(1, fields, 1);
+      const saving = store.update('1', fields, 1);
 
       store.receiveUpdate(remote(2, 'Ada'), true);
       expect(store.remoteUpdate()).toBeNull();
@@ -300,7 +300,7 @@ describe('CreativeStore', () => {
 
     it('still records another Collaborator update that arrives during my save', async () => {
       openLoaded();
-      const saving = store.update(1, fields, 1);
+      const saving = store.update('1', fields, 1);
 
       store.receiveUpdate(remote(2, 'Grace'), true);
 
@@ -311,7 +311,7 @@ describe('CreativeStore', () => {
 
     it('lets a Conflict show the newest copy rather than a second prompt', async () => {
       openLoaded();
-      const saving = store.update(1, fields, 1);
+      const saving = store.update('1', fields, 1);
       http.expectOne(`${BASE}/1`).flush({ current: remote(2) }, { status: 409, statusText: 'Conflict' });
       await saving;
 
@@ -325,7 +325,7 @@ describe('CreativeStore', () => {
     it('hands over to the Conflict banner and drops the remote update when my stale save is rejected', async () => {
       openLoaded();
       store.receiveUpdate(remote(2), true);
-      const saving = store.update(1, fields, 1);
+      const saving = store.update('1', fields, 1);
       http.expectOne(`${BASE}/1`).flush({ current: remote(2) }, { status: 409, statusText: 'Conflict' });
       await saving;
 
@@ -345,7 +345,7 @@ describe('CreativeStore', () => {
 
     it('does not move the selected Creative backwards when a save result is older', async () => {
       openLoaded();
-      const saving = store.update(1, fields, 1);
+      const saving = store.update('1', fields, 1);
       store.receiveUpdate(remote(3, 'Grace'), false);
       http.expectOne(`${BASE}/1`).flush(creative(1, 2));
       await saving;
@@ -356,13 +356,13 @@ describe('CreativeStore', () => {
     it('keeps a remote update newer than my save, and clears one my save reached', async () => {
       openLoaded();
       store.receiveUpdate(remote(2), true);
-      const saving = store.update(1, fields, 2);
+      const saving = store.update('1', fields, 2);
       http.expectOne(`${BASE}/1`).flush(creative(1, 3));
       await saving;
       expect(store.remoteUpdate()).toBeNull();
 
       store.receiveUpdate(remote(5), true);
-      const again = store.update(1, fields, 3);
+      const again = store.update('1', fields, 3);
       http.expectOne(`${BASE}/1`).flush(creative(1, 4));
       await again;
       expect(store.remoteUpdate()?.version).toBe(5);
@@ -372,7 +372,7 @@ describe('CreativeStore', () => {
       openLoaded();
       store.receiveUpdate(remote(2), true);
 
-      store.open(2);
+      store.open('2');
 
       expect(store.remoteUpdate()).toBeNull();
       http.expectOne(`${BASE}/2`).flush(creative(2));
@@ -381,7 +381,7 @@ describe('CreativeStore', () => {
 
   describe('update', () => {
     it('returns the saved Creative with its new Version', async () => {
-      const result = store.update(1, fields, 2);
+      const result = store.update('1', fields, 2);
       http.expectOne(`${BASE}/1`).flush(creative(1, 3));
 
       expect((await result)?.version).toBe(3);
@@ -389,7 +389,7 @@ describe('CreativeStore', () => {
     });
 
     it('returns null and keeps the error when the save fails', async () => {
-      const result = store.update(1, fields, 2);
+      const result = store.update('1', fields, 2);
       http.expectOne(`${BASE}/1`).flush('boom', { status: 500, statusText: 'Server Error' });
 
       expect(await result).toBeNull();

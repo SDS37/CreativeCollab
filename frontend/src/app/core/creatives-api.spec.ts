@@ -16,7 +16,7 @@ const fields: CreativeFields = {
 };
 
 const creative: Creative = {
-  id: 1,
+  id: '1',
   ...fields,
   imageUrl: null,
   version: 1,
@@ -50,7 +50,7 @@ describe('CreativesApi', () => {
 
   it('gets one Creative by id', () => {
     let result: Creative | undefined;
-    api.get(1).subscribe((r) => (result = r));
+    api.get('1').subscribe((r) => (result = r));
 
     const req = http.expectOne(`${BASE}/1`);
     expect(req.request.method).toBe('GET');
@@ -74,7 +74,7 @@ describe('CreativesApi', () => {
   });
 
   it('updates with the loaded Version and the Display name, sending a present image URL', () => {
-    api.update(1, { ...fields, imageUrl: 'https://x.test/a.png' }, 3).subscribe();
+    api.update('1', { ...fields, imageUrl: 'https://x.test/a.png' }, 3).subscribe();
 
     const req = http.expectOne(`${BASE}/1`);
     expect(req.request.method).toBe('PUT');

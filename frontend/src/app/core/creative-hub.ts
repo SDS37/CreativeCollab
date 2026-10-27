@@ -11,7 +11,7 @@ export const HUB_CONNECTION_FACTORY = new InjectionToken<() => HubConnection>('H
 });
 
 interface Group {
-  id: number;
+  id: string;
   userName: string;
 }
 
@@ -39,7 +39,7 @@ export class CreativeHubService {
   /** Bumped by every join and dispose, so a join that was overtaken stops quietly. */
   private epoch = 0;
 
-  async join(id: number, userName: string): Promise<void> {
+  async join(id: string, userName: string): Promise<void> {
     const epoch = ++this.epoch;
     try {
       await this.leaveGroup();

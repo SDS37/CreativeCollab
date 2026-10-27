@@ -23,7 +23,7 @@ export class CreativeEditPage {
   private readonly displayName = inject(DisplayName);
 
   /** The id in the route, or null on the create page. */
-  private readonly id = signal<number | null>(null);
+  private readonly id = signal<string | null>(null);
 
   /** The Collaborator's unsaved edits, as last reported by the form. */
   private readonly draft = signal<CreativeFields | null>(null);
@@ -56,7 +56,7 @@ export class CreativeEditPage {
   constructor() {
     this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
       const raw = params.get('id');
-      const id = raw === null ? null : Number(raw);
+      const id = raw;
       this.id.set(id);
       this.load();
       if (id === null) {

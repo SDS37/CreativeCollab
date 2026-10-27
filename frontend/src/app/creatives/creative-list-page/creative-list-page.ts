@@ -22,7 +22,7 @@ export class CreativeListPage {
     this.store.loadList();
   }
 
-  protected open(id: number): void {
+  protected open(id: string): void {
     void this.router.navigate(['/creatives', id]);
   }
 }

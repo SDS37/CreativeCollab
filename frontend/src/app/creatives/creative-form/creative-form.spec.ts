@@ -3,7 +3,7 @@ import { Creative, CreativeFields } from '../../core/creative.model';
 import { CreativeForm } from './creative-form';
 
 const creative: Creative = {
-  id: 1,
+  id: '1',
   name: 'Spring',
   headline: 'Fresh',
   body: 'Buy now',

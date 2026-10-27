@@ -33,5 +33,5 @@ import { Creative } from '../../core/creative.model';
 })
 export class CreativeList {
   readonly creatives = input.required<Creative[]>();
-  readonly opened = output<number>();
+  readonly opened = output<string>();
 }

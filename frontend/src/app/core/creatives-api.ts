@@ -15,7 +15,7 @@ export class CreativesApi {
     return this.http.get<Creative[]>(CREATIVES_URL);
   }
 
-  get(id: number): Observable<Creative> {
+  get(id: string): Observable<Creative> {
     return this.http.get<Creative>(`${CREATIVES_URL}/${id}`);
   }
 
@@ -23,7 +23,7 @@ export class CreativesApi {
     return this.http.post<Creative>(CREATIVES_URL, this.body(fields));
   }
 
-  update(id: number, fields: CreativeFields, version: number): Observable<Creative> {
+  update(id: string, fields: CreativeFields, version: number): Observable<Creative> {
     return this.http.put<Creative>(`${CREATIVES_URL}/${id}`, { ...this.body(fields), version });
   }
 
