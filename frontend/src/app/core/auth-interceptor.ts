@@ -11,6 +11,15 @@ import { Session } from './session';
  */
 const ANONYMOUS = ['login', 'register', 'refresh', 'logout'].map((name) => `${AUTH_URL}/${name}`);
 
+/** Whether the URL, resolved the way the browser would, points at the API's origin. A prefix check is fooled by `http://localhost:5114@evil.com`. */
+const isApiRequest = (url: string): boolean => {
+  try {
+    return new URL(url, globalThis.location.href).origin === new URL(API_ORIGIN).origin;
+  } catch {
+    return false;
+  }
+};
+
 const withBearer = (request: HttpRequest<unknown>, token: string | null) =>
   token === null ? request : request.clone({ setHeaders: { Authorization: `Bearer ${token}` } });
 
@@ -20,7 +29,7 @@ const withBearer = (request: HttpRequest<unknown>, token: string | null) =>
  * Collaborator is sent to login.
  */
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
-  if (!request.url.startsWith(API_ORIGIN) || ANONYMOUS.includes(request.url)) {
+  if (!isApiRequest(request.url) || ANONYMOUS.includes(request.url)) {
     return next(request);
   }
   const session = inject(Session);

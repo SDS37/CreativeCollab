@@ -53,6 +53,26 @@ describe('authInterceptor', () => {
     expect(controller.expectOne('https://example.com/data').request.headers.has('Authorization')).toBe(false);
   });
 
+  it.each([
+    'http://localhost:5114@evil.com/x',
+    'http://localhost:5114.evil.com/x',
+    'http://localhost:51140/x',
+    'https://localhost:5114/x',
+    'relative/path',
+    '/api/creatives',
+  ])('adds no token to %s, which is not the API origin', (url) => {
+    http.get(url).subscribe({ error: () => {} });
+
+    expect(controller.expectOne(url).request.headers.has('Authorization')).toBe(false);
+  });
+
+  it('still adds the token to the API origin however the URL is written', () => {
+    for (const url of [API, `${API}?page=1`, 'http://LOCALHOST:5114/api/creatives', 'http://localhost:5114']) {
+      http.get(url).subscribe({ error: () => {} });
+      expect(controller.expectOne(url).request.headers.get('Authorization')).toBe(`Bearer ${first}`);
+    }
+  });
+
   it('does not send the token to the sign-in, register or refresh endpoints', () => {
     for (const path of ['login', 'register', 'refresh']) {
       http.post(`${AUTH}/${path}`, {}).subscribe({ error: () => {} });
