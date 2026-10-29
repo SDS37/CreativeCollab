@@ -1,6 +1,8 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
+using CreativeCollab.Api.Auth;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CreativeCollab.Api.Tests;
 
@@ -108,6 +110,25 @@ public sealed class AuthTests : IDisposable
         Assert.True((await taken.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("errors").TryGetProperty("email", out _));
         Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, noName.StatusCode);
+    }
+
+    [Fact]
+    public async Task Register_login_and_refresh_are_rate_limited_each_on_its_own()
+    {
+        var host = new ApiFactory(s => s.Configure<AuthRateLimitOptions>(o => o.PermitLimit = 3));
+        _hosts.Add(host);
+        var client = host.CreateClient();
+
+        for (var i = 0; i < 3; i++)
+        {
+            Assert.NotEqual(HttpStatusCode.TooManyRequests, (await client.LoginAsync("ana@example.com", "wrong password here")).StatusCode);
+            Assert.NotEqual(HttpStatusCode.TooManyRequests, (await client.RegisterAsync($"user{i}@example.com")).StatusCode);
+            Assert.NotEqual(HttpStatusCode.TooManyRequests, (await client.RefreshAsync("nope")).StatusCode);
+        }
+
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await client.LoginAsync("ana@example.com", "wrong password here")).StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await client.RegisterAsync("late@example.com")).StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await client.RefreshAsync("nope")).StatusCode);
     }
 
     [Fact]

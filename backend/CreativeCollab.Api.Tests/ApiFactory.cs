@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using CreativeCollab.Api.Auth;
 using CreativeCollab.Api.Data;
 using CreativeCollab.Api.Services;
 
@@ -53,6 +54,8 @@ public sealed class ApiFactory(
             services.AddHttpClient<IImageUrlValidator, ImageUrlValidator>()
                 .ConfigurePrimaryHttpMessageHandler(() => Images);
             services.AddSingleton<IHostAddressResolver>(Resolver);
+            // Every test host shares one client address, so the auth limit is lifted unless a test sets it.
+            services.Configure<AuthRateLimitOptions>(o => o.PermitLimit = 10_000);
             configureServices?.Invoke(services);
         });
         configureWebHost?.Invoke(builder);

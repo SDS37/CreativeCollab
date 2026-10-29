@@ -1,4 +1,5 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using CreativeCollab.Api.Auth;
 using CreativeCollab.Api.Data;
 using CreativeCollab.Api.Endpoints;
@@ -54,6 +55,22 @@ builder.Services.AddSingleton<IConfigureOptions<JwtBearerOptions>, JwtBearerSetu
 builder.Services.AddAuthorization();
 builder.Services.AddSingleton<TokenService>();
 builder.Services.AddScoped<SessionService>();
+builder.Services.Configure<AuthRateLimitOptions>(builder.Configuration.GetSection("RateLimiting:Auth"));
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy(AuthRateLimitOptions.PolicyName, http =>
+    {
+        var limit = http.RequestServices.GetRequiredService<IOptions<AuthRateLimitOptions>>().Value;
+        var client = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter($"{http.Request.Path}|{client}", _ => new FixedWindowRateLimiterOptions
+        {
+            PermitLimit = limit.PermitLimit,
+            Window = limit.Window,
+            QueueLimit = 0,
+        });
+    });
+});
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<PresenceTracker>();
 builder.Services.AddProblemDetails();
@@ -64,6 +81,7 @@ var app = builder.Build();
 
 app.UseExceptionHandler();
 app.UseCors();
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
