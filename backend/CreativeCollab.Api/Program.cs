@@ -88,6 +88,9 @@ app.UseAuthorization();
 if (app.Environment.IsDevelopment())
     await app.InitializeDatabaseAsync();
 
+// Outside Development the database is migrated by the deployer; the first Admin is created once it exists.
+await app.SeedFirstAdminAsync();
+
 app.MapCreativeEndpoints();
 app.MapAuthEndpoints();
 app.MapHub<CreativeHub>("/hubs/creatives");
