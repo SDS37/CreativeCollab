@@ -9,10 +9,14 @@ export type Role = 'Viewer' | 'Editor' | 'Admin';
 /** Weakest first: a higher role may do everything a lower one may. */
 const ROLE_ORDER: readonly string[] = ['Viewer', 'Editor', 'Admin'];
 
+/** A token this close to expiring is renewed before it is used, so it does not lapse in flight. */
+const EXPIRY_MARGIN_SECONDS = 30;
+
 const accessTokenResponse = z.object({ accessToken: z.string().min(1) });
 
 const claimsSchema = z.object({
   name: z.string(),
+  exp: z.number().optional(),
   role: z.union([z.string(), z.array(z.string())]).optional(),
 });
 
@@ -82,6 +86,19 @@ export class Session {
       throw toAuthError(error);
     }
     await this.signIn(registration.email, registration.password);
+  }
+
+  /**
+   * A token that is valid now, for callers that cannot retry on a 401 (the live connection). Renews first
+   * when the token is missing or about to expire. Rejects, and signs out, when renewal fails.
+   */
+  async freshAccessToken(): Promise<string> {
+    const token = this.token();
+    const exp = this.claims()?.exp;
+    if (token !== null && exp !== undefined && exp - Date.now() / 1000 > EXPIRY_MARGIN_SECONDS) {
+      return token;
+    }
+    return firstValueFrom(this.refresh());
   }
 
   /** Renews the session from the refresh cookie once on load. Never fails: no cookie means signed out. */

@@ -1,7 +1,11 @@
 import { HubConnection, HubConnectionState } from '@microsoft/signalr';
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
 import { Creative } from './creative.model';
 import { CreativeHubService, HUB_CONNECTION_FACTORY } from './creative-hub';
+import { Session } from './session';
+import { fakeAccessToken, signInAs } from './session.testing';
 
 class FakeConnection {
   state: HubConnectionState = HubConnectionState.Disconnected;
@@ -13,6 +17,7 @@ class FakeConnection {
   private closed: (() => void)[] = [];
   starts = 0;
   stops = 0;
+  accessTokenFactory: () => string | Promise<string> = () => '';
 
   on(method: string, handler: (...args: unknown[]) => void): void {
     this.handlers.set(method, handler);
@@ -71,15 +76,20 @@ describe('CreativeHubService', () => {
   let hub: CreativeHubService;
   let created: number;
 
+  const REFRESH_URL = 'http://localhost:5114/api/auth/refresh';
+
   beforeEach(() => {
     connection = new FakeConnection();
     created = 0;
     TestBed.configureTestingModule({
       providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
         {
           provide: HUB_CONNECTION_FACTORY,
-          useValue: () => {
+          useValue: (accessTokenFactory: () => string | Promise<string>) => {
             created++;
+            connection.accessTokenFactory = accessTokenFactory;
             return connection as unknown as HubConnection;
           },
         },
@@ -219,5 +229,73 @@ describe('CreativeHubService', () => {
 
     expect(connection.methods()).not.toContain('JoinCreative');
     expect(hub.presence()).toEqual([]);
+  });
+
+  describe('access token on every connect and reconnect', () => {
+    it('hands the current token to the connection while it is still valid, without a refresh', async () => {
+      await signInAs('Ada', 'Editor', 900);
+      const http = TestBed.inject(HttpTestingController);
+      await hub.join('1');
+
+      const token = await connection.accessTokenFactory();
+
+      expect(token).toBe(TestBed.inject(Session).accessToken());
+      http.expectNone(REFRESH_URL);
+    });
+
+    it('refreshes first when the token has expired and passes the new token', async () => {
+      await signInAs('Ada', 'Editor', -60);
+      const http = TestBed.inject(HttpTestingController);
+      await hub.join('1');
+
+      const pending = Promise.resolve(connection.accessTokenFactory());
+      const renewed = fakeAccessToken('Ada', 'Editor', 900);
+      http.expectOne(REFRESH_URL).flush({ accessToken: renewed, expiresIn: 900 });
+
+      expect(await pending).toBe(renewed);
+    });
+
+    it('refreshes when the token is about to expire', async () => {
+      await signInAs('Ada', 'Editor', 5);
+      const http = TestBed.inject(HttpTestingController);
+      await hub.join('1');
+
+      const pending = Promise.resolve(connection.accessTokenFactory());
+      const renewed = fakeAccessToken('Ada', 'Editor', 900);
+      http.expectOne(REFRESH_URL).flush({ accessToken: renewed, expiresIn: 900 });
+
+      expect(await pending).toBe(renewed);
+    });
+
+    it('shares one refresh with a request that renews at the same time', async () => {
+      await signInAs('Ada', 'Editor', -60);
+      const http = TestBed.inject(HttpTestingController);
+      await hub.join('1');
+
+      const other = new Promise((resolve) => TestBed.inject(Session).refresh().subscribe(resolve));
+      const pending = Promise.resolve(connection.accessTokenFactory());
+      http.expectOne(REFRESH_URL).flush({ accessToken: fakeAccessToken('Ada', 'Editor', 900), expiresIn: 900 });
+
+      expect(await pending).toBe(await other);
+    });
+
+    it('stops reconnecting and reports live updates unavailable when the refresh fails', async () => {
+      await signInAs('Ada', 'Editor', -60);
+      const http = TestBed.inject(HttpTestingController);
+      await hub.join('1');
+
+      const pending = Promise.resolve(connection.accessTokenFactory()).then(
+        () => 'resolved',
+        () => 'rejected',
+      );
+      http.expectOne(REFRESH_URL).flush({}, { status: 401, statusText: 'Unauthorized' });
+
+      expect(await pending).toBe('rejected');
+      expect(connection.stops).toBe(1);
+      expect(hub.unavailable()).toBe(true);
+      expect(hub.connected()).toBe(false);
+      expect(TestBed.inject(Session).isSignedIn()).toBe(false);
+      http.expectNone(REFRESH_URL);
+    });
   });
 });

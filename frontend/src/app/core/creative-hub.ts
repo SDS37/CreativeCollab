@@ -6,17 +6,16 @@ import { Creative, creativeSchema } from './creative.model';
 import { Session } from './session';
 
 /** Builds the SignalR connection. Replaced in tests with a fake. */
-export const HUB_CONNECTION_FACTORY = new InjectionToken<() => HubConnection>('HUB_CONNECTION_FACTORY', {
+export type HubConnectionFactory = (accessTokenFactory: () => Promise<string>) => HubConnection;
+
+/**
+ * Builds the SignalR connection. The token factory is asked for a token on every connect and reconnect.
+ * Replaced in tests with a fake.
+ */
+export const HUB_CONNECTION_FACTORY = new InjectionToken<HubConnectionFactory>('HUB_CONNECTION_FACTORY', {
   providedIn: 'root',
-  factory: () => {
-    const session = inject(Session);
-    // Read again on every connect and reconnect, so a renewed token is used.
-    return () =>
-      new HubConnectionBuilder()
-        .withUrl(HUB_URL, { accessTokenFactory: () => session.accessToken() ?? '' })
-        .withAutomaticReconnect()
-        .build();
-  },
+  factory: () => (accessTokenFactory) =>
+    new HubConnectionBuilder().withUrl(HUB_URL, { accessTokenFactory }).withAutomaticReconnect().build(),
 });
 
 interface Group {
@@ -30,6 +29,7 @@ interface Group {
 @Service()
 export class CreativeHubService {
   private readonly createConnection = inject(HUB_CONNECTION_FACTORY);
+  private readonly session = inject(Session);
 
   private readonly presenceState = signal<string[]>([]);
   private readonly connectedState = signal(false);
@@ -100,7 +100,7 @@ export class CreativeHubService {
     if (this.connection) {
       return this.connection;
     }
-    const connection = this.createConnection();
+    const connection = this.createConnection(() => this.tokenForConnect());
     this.connection = connection;
 
     connection.on('CreativeUpdated', (creative: unknown) => {
@@ -124,6 +124,21 @@ export class CreativeHubService {
       }
     });
     return connection;
+  }
+
+  /**
+   * Asked by the connection on every connect and reconnect. When the token cannot be renewed the Collaborator
+   * is signed out, so the connection is stopped instead of retrying with a token that will be refused.
+   */
+  private async tokenForConnect(): Promise<string> {
+    try {
+      return await this.session.freshAccessToken();
+    } catch (error) {
+      this.connectedState.set(false);
+      this.unavailable.set(true);
+      void this.connection?.stop().catch(() => undefined);
+      throw error;
+    }
   }
 
   /** Group membership belongs to the old connection id, so it must be re-established. */
