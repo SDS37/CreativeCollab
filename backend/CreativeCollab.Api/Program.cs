@@ -1,3 +1,5 @@
+using System.Text;
+using CreativeCollab.Api.Auth;
 using CreativeCollab.Api.Data;
 using CreativeCollab.Api.Endpoints;
 using CreativeCollab.Api.Hubs;
@@ -5,6 +7,8 @@ using CreativeCollab.Api.Infrastructure;
 using CreativeCollab.Api.Services;
 using CreativeCollab.Api.Validation;
 using FluentValidation;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -26,6 +30,27 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
     .AllowAnyHeader()
     .AllowAnyMethod()
     .AllowCredentials())); // SignalR needs credentials, so the origin list is explicit, never a wildcard
+builder.Services.AddOptions<JwtOptions>()
+    .Bind(builder.Configuration.GetSection("Jwt"))
+    .Validate(o => Encoding.UTF8.GetByteCount(o.Key) >= JwtOptions.MinimumKeyBytes,
+        $"Jwt:Key must be at least {JwtOptions.MinimumKeyBytes} bytes (256 bits). Set it with user-secrets or the Jwt__Key environment variable.")
+    .ValidateOnStart();
+builder.Services.AddIdentityCore<AppUser>(options =>
+    {
+        options.Password.RequiredLength = 12; // length only, no composition rules
+        options.Password.RequireDigit = false;
+        options.Password.RequireLowercase = false;
+        options.Password.RequireUppercase = false;
+        options.Password.RequireNonAlphanumeric = false;
+        options.User.RequireUniqueEmail = true;
+    })
+    .AddRoles<IdentityRole>()
+    .AddEntityFrameworkStores<CreativeDbContext>();
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
+builder.Services.AddSingleton<IConfigureOptions<JwtBearerOptions>, JwtBearerSetup>();
+builder.Services.AddAuthorization();
+builder.Services.AddSingleton<TokenService>();
+builder.Services.AddScoped<SessionService>();
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<PresenceTracker>();
 builder.Services.AddProblemDetails();
@@ -36,11 +61,14 @@ var app = builder.Build();
 
 app.UseExceptionHandler();
 app.UseCors();
+app.UseAuthentication();
+app.UseAuthorization();
 
 if (app.Environment.IsDevelopment())
     await app.InitializeDatabaseAsync();
 
 app.MapCreativeEndpoints();
+app.MapAuthEndpoints();
 app.MapHub<CreativeHub>("/hubs/creatives");
 
 app.Run();

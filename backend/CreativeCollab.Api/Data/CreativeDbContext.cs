@@ -1,15 +1,50 @@
+using CreativeCollab.Api.Auth;
 using CreativeCollab.Api.Models;
 using CreativeCollab.Api.Validation;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace CreativeCollab.Api.Data;
 
-public sealed class CreativeDbContext(DbContextOptions<CreativeDbContext> options) : DbContext(options)
+public sealed class CreativeDbContext(DbContextOptions<CreativeDbContext> options)
+    : IdentityDbContext<AppUser>(options)
 {
     public DbSet<Creative> Creatives => Set<Creative>();
+    public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<AppUser>().Property(u => u.DisplayName).IsRequired().HasMaxLength(AppUser.DisplayNameMaxLength);
+
+        // Roles are part of the schema, so every database has them from the first migration.
+        modelBuilder.Entity<IdentityRole>().HasData(AccountRoles.Names.Select(name => new IdentityRole
+        {
+            Id = $"role-{name.ToLowerInvariant()}",
+            Name = name,
+            NormalizedName = name.ToUpperInvariant(),
+            ConcurrencyStamp = $"role-{name.ToLowerInvariant()}-v1",
+        }));
+
+        modelBuilder.Entity<RefreshToken>(e =>
+        {
+            e.HasKey(t => t.Id);
+            e.HasIndex(t => t.TokenHash).IsUnique();
+            e.HasIndex(t => t.FamilyId);
+            e.Property(t => t.TokenHash).IsRequired();
+            e.HasOne<AppUser>().WithMany().HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Cascade);
+            // Stored as UTC ticks, like Creative.UpdatedAt.
+            e.Property(t => t.ExpiresAt).HasConversion(v => v.UtcTicks, v => new DateTimeOffset(v, TimeSpan.Zero));
+            e.Property(t => t.UsedAt).HasConversion(
+                v => v == null ? (long?)null : v.Value.UtcTicks,
+                v => v == null ? null : new DateTimeOffset(v.Value, TimeSpan.Zero));
+            e.Property(t => t.RevokedAt).HasConversion(
+                v => v == null ? (long?)null : v.Value.UtcTicks,
+                v => v == null ? null : new DateTimeOffset(v.Value, TimeSpan.Zero));
+        });
+
         modelBuilder.Entity<Creative>(e =>
         {
             e.HasKey(c => c.Id);
