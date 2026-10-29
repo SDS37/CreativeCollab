@@ -34,6 +34,8 @@ npm start      # http://localhost:4200
 npm test       # signal store, API, hub, and component tests
 ```
 
+The refresh token travels in a `Secure` cookie. Over `http://localhost` that works in Chrome and Firefox, which treat localhost as a secure context, but Safari may reject the cookie, so sign-in appears to work and a reload signs you out. Use another browser for development, or serve the app and API over https.
+
 To see a Conflict, register two accounts, sign in to each in its own browser window (or a private window), open the same Creative in both, save in one, then save in the other.
 
 **Playwright** (starts its own API, and the Angular app when it is not already running):
