@@ -28,13 +28,13 @@ public sealed class TokenValidationTests : IDisposable
         var session = await client.SignInAsync("ana@example.com");
 
         _time.Advance(TimeSpan.FromMinutes(14));
-        Assert.Equal(HttpStatusCode.OK, (await client.MeAsync(session.AccessToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.ListCreativesAsync(session.AccessToken)).StatusCode);
 
         _time.Advance(TimeSpan.FromMinutes(1) + TimeSpan.FromSeconds(29)); // inside the 30 second skew
-        Assert.Equal(HttpStatusCode.OK, (await client.MeAsync(session.AccessToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.ListCreativesAsync(session.AccessToken)).StatusCode);
 
         _time.Advance(TimeSpan.FromSeconds(2));
-        Assert.Equal(HttpStatusCode.Unauthorized, (await client.MeAsync(session.AccessToken)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.ListCreativesAsync(session.AccessToken)).StatusCode);
     }
 
     [Fact]
@@ -47,7 +47,7 @@ public sealed class TokenValidationTests : IDisposable
         var forged = $"{parts[0]}.{Base64UrlEncoder.Encode(payload)}.{parts[2]}";
 
         Assert.NotEqual(session.AccessToken, forged);
-        Assert.Equal(HttpStatusCode.Unauthorized, (await client.MeAsync(forged)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.ListCreativesAsync(forged)).StatusCode);
     }
 
     [Fact]
@@ -55,7 +55,7 @@ public sealed class TokenValidationTests : IDisposable
     {
         var token = Forge(key: "another-signing-key-0123456789-abcdefghijk");
 
-        Assert.Equal(HttpStatusCode.Unauthorized, (await NewClient().MeAsync(token)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await NewClient().ListCreativesAsync(token)).StatusCode);
     }
 
     [Fact]
@@ -63,7 +63,7 @@ public sealed class TokenValidationTests : IDisposable
     {
         var token = Forge(algorithm: SecurityAlgorithms.HmacSha384);
 
-        Assert.Equal(HttpStatusCode.Unauthorized, (await NewClient().MeAsync(token)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await NewClient().ListCreativesAsync(token)).StatusCode);
     }
 
     [Fact]
@@ -72,7 +72,7 @@ public sealed class TokenValidationTests : IDisposable
         var header = Base64UrlEncoder.Encode("""{"alg":"none","typ":"JWT"}""");
         var payload = Base64UrlEncoder.Encode($$"""{"sub":"x","name":"Mallory","role":"Admin","iss":"creativecollab-api","aud":"creativecollab-web","exp":{{_time.GetUtcNow().AddMinutes(5).ToUnixTimeSeconds()}}}""");
 
-        Assert.Equal(HttpStatusCode.Unauthorized, (await NewClient().MeAsync($"{header}.{payload}.")).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await NewClient().ListCreativesAsync($"{header}.{payload}.")).StatusCode);
     }
 
     [Fact]
@@ -80,15 +80,15 @@ public sealed class TokenValidationTests : IDisposable
     {
         var client = NewClient();
 
-        Assert.Equal(HttpStatusCode.Unauthorized, (await client.MeAsync(Forge(issuer: "someone-else"))).StatusCode);
-        Assert.Equal(HttpStatusCode.Unauthorized, (await client.MeAsync(Forge(audience: "another-app"))).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.ListCreativesAsync(Forge(issuer: "someone-else"))).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.ListCreativesAsync(Forge(audience: "another-app"))).StatusCode);
     }
 
     [Fact]
     public async Task A_correctly_signed_forged_token_control_is_accepted()
     {
         // Guards the helper: with every field right, the forged token passes, so the refusals above are about one field each.
-        Assert.Equal(HttpStatusCode.OK, (await NewClient().MeAsync(Forge())).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await NewClient().ListCreativesAsync(Forge())).StatusCode);
     }
 
     private string Forge(string key = TestSigningKey.Value, string algorithm = SecurityAlgorithms.HmacSha256,

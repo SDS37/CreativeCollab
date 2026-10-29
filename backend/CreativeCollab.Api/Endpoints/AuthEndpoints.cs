@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using CreativeCollab.Api.Auth;
 using CreativeCollab.Api.Validation;
 
@@ -15,7 +14,7 @@ public static class AuthEndpoints
         group.MapPost("/register", async (RegisterRequest request, AccountService accounts) =>
             await accounts.RegisterAsync(request) switch
             {
-                RegisterResult.Registered r => Results.Created($"{BasePath}/me", new { id = r.Account.Id, email = r.Account.Email, displayName = r.Account.DisplayName }),
+                RegisterResult.Registered r => Results.Json(new { id = r.Account.Id, email = r.Account.Email, displayName = r.Account.DisplayName }, statusCode: StatusCodes.Status201Created),
                 RegisterResult.Invalid i => Results.ValidationProblem(i.Problems),
                 _ => throw new InvalidOperationException("Unhandled register result."),
             }).AddEndpointFilter<ValidationFilter<RegisterRequest>>().RequireRateLimiting(AuthRateLimitOptions.PolicyName).AllowAnonymous();
@@ -54,14 +53,6 @@ public static class AuthEndpoints
             RefreshCookie.Clear(http);
             return Results.NoContent();
         }).AllowAnonymous();
-
-        group.MapGet("/me", (ClaimsPrincipal principal) => Results.Ok(new
-        {
-            sub = principal.FindFirstValue("sub"),
-            name = principal.FindFirstValue("name"),
-            role = principal.FindFirstValue("role"),
-            jti = principal.FindFirstValue("jti"),
-        })).RequireAuthorization();
 
         return app;
     }

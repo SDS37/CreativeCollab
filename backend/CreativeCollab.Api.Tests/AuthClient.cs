@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using Microsoft.IdentityModel.Tokens;
 
 namespace CreativeCollab.Api.Tests;
 
@@ -73,10 +74,15 @@ internal static class AuthClient
         return client.SendAsync(request);
     }
 
-    public static Task<HttpResponseMessage> MeAsync(this HttpClient client, string? accessToken)
+    /// <summary>A protected route any signed-in role may read, to show whether the API accepts a token.</summary>
+    public static Task<HttpResponseMessage> ListCreativesAsync(this HttpClient client, string? accessToken)
     {
-        var request = new HttpRequestMessage(HttpMethod.Get, "/api/auth/me");
+        var request = new HttpRequestMessage(HttpMethod.Get, "/api/creatives");
         if (accessToken is not null) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         return client.SendAsync(request);
     }
+
+    /// <summary>The claims an access token carries, read from its payload (the signature is not checked here).</summary>
+    public static JsonElement ClaimsOf(string accessToken) =>
+        JsonSerializer.Deserialize<JsonElement>(Base64UrlEncoder.DecodeBytes(accessToken.Split('.')[1]));
 }

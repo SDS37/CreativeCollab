@@ -27,9 +27,8 @@ public sealed class AuthTests : IDisposable
 
         var session = await client.SignInAsync("ana@example.com", displayName: "Ana Lopez");
 
-        var me = await client.MeAsync(session.AccessToken);
-        Assert.Equal(HttpStatusCode.OK, me.StatusCode);
-        var claims = await me.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(HttpStatusCode.OK, (await client.ListCreativesAsync(session.AccessToken)).StatusCode);
+        var claims = AuthClient.ClaimsOf(session.AccessToken);
         Assert.Equal("Ana Lopez", claims.GetProperty("name").GetString());
         Assert.Equal("Editor", claims.GetProperty("role").GetString());
         Assert.False(string.IsNullOrEmpty(claims.GetProperty("sub").GetString()));
@@ -204,7 +203,7 @@ public sealed class AuthTests : IDisposable
     [Fact]
     public async Task A_request_without_a_token_is_refused_with_401()
     {
-        var response = await NewClient().MeAsync(accessToken: null);
+        var response = await NewClient().ListCreativesAsync(accessToken: null);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }

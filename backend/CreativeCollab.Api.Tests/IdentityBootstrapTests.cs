@@ -38,12 +38,13 @@ public sealed class IdentityBootstrapTests : IDisposable
             b.UseSetting("Admin:DisplayName", "First Admin");
         });
 
-    private static async Task<JsonElement> MeAsync(HttpClient client, string email, string password)
+    private static async Task<JsonElement> ClaimsAsync(HttpClient client, string email, string password)
     {
         var login = await client.LoginAsync(email, password);
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);
         var session = await AuthClient.ReadSessionAsync(login);
-        return await (await client.MeAsync(session.AccessToken)).Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(HttpStatusCode.OK, (await client.ListCreativesAsync(session.AccessToken)).StatusCode);
+        return AuthClient.ClaimsOf(session.AccessToken);
     }
 
     [Fact]
@@ -51,22 +52,22 @@ public sealed class IdentityBootstrapTests : IDisposable
     {
         await using var host = StartHost();
 
-        var me = await MeAsync(host.CreateClient(), AdminEmail, AdminPassword);
+        var claims = await ClaimsAsync(host.CreateClient(), AdminEmail, AdminPassword);
 
-        Assert.Equal("Admin", me.GetProperty("role").GetString());
-        Assert.Equal("First Admin", me.GetProperty("name").GetString());
+        Assert.Equal("Admin", claims.GetProperty("role").GetString());
+        Assert.Equal("First Admin", claims.GetProperty("name").GetString());
     }
 
     [Fact]
     public async Task Restarting_with_the_same_configuration_keeps_one_admin_who_can_still_sign_in()
     {
         await using (var first = StartHost())
-            await MeAsync(first.CreateClient(), AdminEmail, AdminPassword);
+            await ClaimsAsync(first.CreateClient(), AdminEmail, AdminPassword);
 
         await using var second = StartHost();
 
-        var me = await MeAsync(second.CreateClient(), AdminEmail, AdminPassword);
-        Assert.Equal("Admin", me.GetProperty("role").GetString());
+        var claims = await ClaimsAsync(second.CreateClient(), AdminEmail, AdminPassword);
+        Assert.Equal("Admin", claims.GetProperty("role").GetString());
     }
 
     [Fact]
@@ -77,7 +78,7 @@ public sealed class IdentityBootstrapTests : IDisposable
 
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.LoginAsync(AdminEmail, AdminPassword)).StatusCode);
         await client.RegisterAsync("ana@example.com");
-        Assert.Equal("Editor", (await MeAsync(client, "ana@example.com", AuthClient.Password)).GetProperty("role").GetString());
+        Assert.Equal("Editor", (await ClaimsAsync(client, "ana@example.com", AuthClient.Password)).GetProperty("role").GetString());
     }
 
     [Fact]

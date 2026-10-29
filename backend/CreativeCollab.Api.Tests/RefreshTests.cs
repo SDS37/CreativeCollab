@@ -45,8 +45,8 @@ public sealed class RefreshTests : IDisposable
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var second = await AuthClient.ReadSessionAsync(response);
         Assert.NotEqual(first.RefreshCookie, second.RefreshCookie);
-        var me = await (await client.MeAsync(second.AccessToken)).Content.ReadFromJsonAsync<JsonElement>();
-        Assert.Equal("Ana Lopez", me.GetProperty("name").GetString());
+        Assert.Equal(HttpStatusCode.OK, (await client.ListCreativesAsync(second.AccessToken)).StatusCode);
+        Assert.Equal("Ana Lopez", AuthClient.ClaimsOf(second.AccessToken).GetProperty("name").GetString());
     }
 
     [Fact]

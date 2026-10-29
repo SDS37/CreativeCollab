@@ -59,8 +59,8 @@ public sealed class RoleAdminTests : IDisposable
     private static async Task<string> AdminTokenAsync(HttpClient client) =>
         (await AuthClient.ReadSessionAsync(await client.LoginAsync(ApiFactory.AdminEmail))).AccessToken;
 
-    private static async Task<string?> RoleOfAsync(HttpClient client, string token) =>
-        (await (await client.MeAsync(token)).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("role").GetString();
+    private static Task<string?> RoleOfAsync(HttpClient client, string token) =>
+        Task.FromResult(AuthClient.ClaimsOf(token).GetProperty("role").GetString());
 
     [Fact]
     public async Task Changing_a_role_without_signing_in_is_401()
@@ -108,8 +108,8 @@ public sealed class RoleAdminTests : IDisposable
         Assert.Equal(HttpStatusCode.NotFound, (await ChangeRoleAsync(client, Guid.NewGuid().ToString(), "Viewer", admin)).StatusCode);
     }
 
-    private static async Task<string> IdOfAsync(HttpClient client, string token) =>
-        (await (await client.MeAsync(token)).Content.ReadFromJsonAsync<JsonElement>()).GetProperty("sub").GetString()!;
+    private static Task<string> IdOfAsync(HttpClient client, string token) =>
+        Task.FromResult(AuthClient.ClaimsOf(token).GetProperty("sub").GetString()!);
 
     [Fact]
     public async Task The_only_admin_cannot_demote_themselves_and_keeps_the_role()
