@@ -69,9 +69,10 @@ public static class AuthEndpoints
 
         group.MapPost("/logout", async (SessionService sessions, HttpContext http) =>
         {
+            // The refresh cookie identifies the session, so signing out works with an expired or missing access token.
             await sessions.EndAsync(http);
             return Results.NoContent();
-        }).RequireAuthorization();
+        }).AllowAnonymous();
 
         group.MapGet("/me", (ClaimsPrincipal principal) => Results.Ok(new
         {

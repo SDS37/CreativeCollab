@@ -276,7 +276,6 @@ public sealed class HubTests : IAsyncDisposable
     [Theory]
     [InlineData("GET", "/api/creatives")]
     [InlineData("GET", "/api/auth/me")]
-    [InlineData("POST", "/api/auth/logout")]
     public async Task Outside_the_hub_paths_the_query_string_token_is_ignored(string method, string path)
     {
         var token = (await _host.NewAccountAsync()).AccessToken;

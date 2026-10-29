@@ -134,4 +134,57 @@ public sealed class RefreshTests : IDisposable
 
         Assert.Equal(HttpStatusCode.NoContent, logout.StatusCode);
     }
+
+    [Fact]
+    public async Task Signing_out_works_from_the_refresh_cookie_alone_with_no_access_token()
+    {
+        var client = NewClient();
+        var session = await client.SignInAsync("ana@example.com");
+
+        var logout = await client.LogoutAsync(session.RefreshCookie);
+
+        Assert.Equal(HttpStatusCode.NoContent, logout.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.RefreshAsync(session.RefreshCookie)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Signing_out_with_an_expired_access_token_still_revokes_the_session()
+    {
+        var client = NewClient();
+        var session = await client.SignInAsync("ana@example.com");
+        _time.Advance(TimeSpan.FromHours(1)); // the access token (15 minutes) has expired
+
+        var logout = await client.LogoutAsync(session.RefreshCookie, session.AccessToken);
+
+        Assert.Equal(HttpStatusCode.NoContent, logout.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.RefreshAsync(session.RefreshCookie)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Signing_out_revokes_the_whole_family_including_a_rotated_token()
+    {
+        var client = NewClient();
+        var first = await client.SignInAsync("ana@example.com");
+        var second = await AuthClient.ReadSessionAsync(await client.RefreshAsync(first.RefreshCookie));
+
+        await client.LogoutAsync(second.RefreshCookie);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.RefreshAsync(second.RefreshCookie)).StatusCode);
+    }
+
+    [Fact]
+    public async Task Signing_out_always_answers_204_and_clears_the_cookie_even_for_a_junk_or_missing_cookie()
+    {
+        var client = NewClient();
+
+        var junk = await client.LogoutAsync("not-a-real-token");
+        var none = await client.LogoutAsync(cookie: null);
+
+        foreach (var response in new[] { junk, none })
+        {
+            Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+            var cleared = response.Headers.GetValues("Set-Cookie").Single(c => c.StartsWith(AuthClient.CookieName + "=")).ToLowerInvariant();
+            Assert.Contains("expires=thu, 01 jan 1970", cleared);
+        }
+    }
 }

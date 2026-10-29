@@ -95,19 +95,19 @@ public sealed class EndpointEnforcementTests : IDisposable
     }
 
     [Fact]
-    public async Task Me_and_logout_need_a_token_but_no_particular_role()
+    public async Task Me_needs_a_token_but_no_particular_role_and_logout_needs_none()
     {
         var anonymous = _host.CreateClient();
         var nobody = await _host.NewAccountWithoutRoleAsync();
 
-        Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.PostAsync("/api/auth/logout", null)).StatusCode);
+        Assert.Equal(HttpStatusCode.NoContent, (await anonymous.PostAsync("/api/auth/logout", null)).StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await anonymous.GetAsync("/api/auth/me")).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await nobody.Client.GetAsync("/api/auth/me")).StatusCode);
         Assert.Equal(HttpStatusCode.NoContent, (await nobody.Client.PostAsync("/api/auth/logout", null)).StatusCode);
     }
 
     [Fact]
-    public async Task Register_login_and_refresh_stay_open_to_anonymous_callers()
+    public async Task Register_login_refresh_and_logout_stay_open_to_anonymous_callers()
     {
         var client = _host.CreateClient();
 
