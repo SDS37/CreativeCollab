@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
 
@@ -23,7 +24,8 @@ export default defineConfig({
       url: 'http://localhost:5114/api/creatives',
       reuseExistingServer: !process.env.CI,
       timeout: 180_000,
-      env: { ASPNETCORE_ENVIRONMENT: 'Development' },
+      // The API refuses to start without a signing key. A throwaway one per run keeps it out of the repository.
+      env: { ASPNETCORE_ENVIRONMENT: 'Development', Jwt__Key: process.env.Jwt__Key ?? randomBytes(48).toString('base64') },
     },
     {
       command: 'npm start -- --host localhost --port 4200',
