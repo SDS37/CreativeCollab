@@ -242,7 +242,7 @@ No second backend project. The test project is the only sibling of the API.
 | Wrong email or password, bad refresh token | 401, one generic message |
 | Account locked after 5 failed sign-ins | 423 |
 | Too many register, login or refresh requests | 429 |
-| Invalid registration (short password, taken or invalid email, no Display name) | 400 `ValidationProblemDetails` |
+| Invalid registration (short password, invalid email, no Display name; a duplicate email gets one generic message that does not confirm an account exists) | 400 `ValidationProblemDetails` |
 | Unexpected exception | 500 ProblemDetails with no internals |
 
 There is no delete.

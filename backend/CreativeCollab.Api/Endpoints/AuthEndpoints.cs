@@ -64,8 +64,26 @@ public static class AuthEndpoints
         return app;
     }
 
-    private static Dictionary<string, string[]> ToProblems(IdentityResult result) =>
-        result.Errors
-            .GroupBy(e => e.Code.Contains("Password", StringComparison.Ordinal) ? "password" : "email")
-            .ToDictionary(g => g.Key, g => g.Select(e => e.Description).ToArray());
+    public const string GenericRegistrationMessage = "Registration could not be completed with these details. Check the details and try again, or sign in.";
+
+    /// <summary>
+    /// A duplicate email or user name gets one generic message, so registering cannot be used to learn which emails have accounts.
+    /// (A successful registration still differs from a failed one: without email verification that cannot be closed. ADR 0003.)
+    /// </summary>
+    private static Dictionary<string, string[]> ToProblems(IdentityResult result)
+    {
+        var problems = new Dictionary<string, List<string>>();
+        foreach (var error in result.Errors)
+        {
+            var (field, message) = error.Code switch
+            {
+                nameof(IdentityErrorDescriber.DuplicateEmail) or nameof(IdentityErrorDescriber.DuplicateUserName) => ("email", GenericRegistrationMessage),
+                var code when code.Contains("Password", StringComparison.Ordinal) => ("password", error.Description),
+                _ => ("email", error.Description),
+            };
+            if (!problems.TryGetValue(field, out var list)) problems[field] = list = [];
+            if (!list.Contains(message)) list.Add(message);
+        }
+        return problems.ToDictionary(p => p.Key, p => p.Value.ToArray());
+    }
 }

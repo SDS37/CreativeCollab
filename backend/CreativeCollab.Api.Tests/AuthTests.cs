@@ -107,9 +107,28 @@ public sealed class AuthTests : IDisposable
         var noName = await client.RegisterAsync("bo@example.com", displayName: "");
 
         Assert.Equal(HttpStatusCode.BadRequest, taken.StatusCode);
-        Assert.True((await taken.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("errors").TryGetProperty("email", out _));
         Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, noName.StatusCode);
+    }
+
+    [Fact]
+    public async Task A_duplicate_email_gets_one_generic_message_that_does_not_confirm_an_account_exists()
+    {
+        var client = NewClient();
+        await client.RegisterAsync("ana@example.com", displayName: "Ana");
+
+        var sameEmail = await client.RegisterAsync("ana@example.com", displayName: "Bea");
+        var otherCase = await client.RegisterAsync("ANA@example.com", displayName: "Cy");
+
+        foreach (var response in new[] { sameEmail, otherCase })
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+            var text = await response.Content.ReadAsStringAsync();
+            Assert.Contains("Registration could not be completed", text);
+            Assert.DoesNotContain("taken", text, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("already", text, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("ana@example.com", text, StringComparison.OrdinalIgnoreCase);
+        }
     }
 
     [Fact]
