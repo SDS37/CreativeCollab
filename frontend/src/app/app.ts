@@ -1,6 +1,7 @@
 import { Component, inject } from '@angular/core';
 import { Router, RouterOutlet } from '@angular/router';
 import { Session } from './core/session';
+import { SIGN_IN_PATH } from './core/sign-in-redirect';
 
 @Component({
   imports: [RouterOutlet],
@@ -14,6 +15,6 @@ export class App {
 
   protected async signOut(): Promise<void> {
     await this.session.signOut();
-    await this.router.navigate(['/sign-in']);
+    await this.router.navigate([SIGN_IN_PATH]);
   }
 }

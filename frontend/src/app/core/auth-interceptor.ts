@@ -4,6 +4,7 @@ import { Router } from '@angular/router';
 import { catchError, Observable, switchMap, throwError } from 'rxjs';
 import { API_ORIGIN, AUTH_URL } from './api-config';
 import { Session } from './session';
+import { SIGN_IN_PATH, signInUrl } from './sign-in-redirect';
 
 /**
  * These answer 401 for their own reasons (wrong password, no cookie) or need no token (logout works from the
@@ -42,8 +43,8 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
     );
   const fail = (error: unknown): Observable<never> => {
     session.clear();
-    if (!router.url.startsWith('/sign-in')) {
-      void router.navigate(['/sign-in'], { queryParams: { returnUrl: router.url } });
+    if (!router.url.startsWith(SIGN_IN_PATH)) {
+      void router.navigateByUrl(signInUrl(router, router.url));
     }
     return throwError(() => error);
   };
