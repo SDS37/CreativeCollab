@@ -27,9 +27,17 @@ public static class AuthEndpoints
         group.MapPost("/login", async (LoginRequest request, UserManager<AppUser> users, SessionService sessions, HttpContext http) =>
         {
             var user = await users.FindByEmailAsync(request.Email ?? "");
-            if (user is null || !await users.CheckPasswordAsync(user, request.Password ?? ""))
-                return Results.Problem(title: "Unauthorized", detail: "Invalid email or password.", statusCode: StatusCodes.Status401Unauthorized);
+            if (user is not null && await users.IsLockedOutAsync(user))
+                return Results.Problem(title: "Locked", detail: "This account is locked after too many failed sign-ins. Please try again in 15 minutes.",
+                    statusCode: StatusCodes.Status423Locked);
 
+            if (user is null || !await users.CheckPasswordAsync(user, request.Password ?? ""))
+            {
+                if (user is not null) await users.AccessFailedAsync(user);
+                return Results.Problem(title: "Unauthorized", detail: "Invalid email or password.", statusCode: StatusCodes.Status401Unauthorized);
+            }
+
+            await users.ResetAccessFailedCountAsync(user);
             return Results.Ok(await sessions.StartAsync(user, http));
         });
 

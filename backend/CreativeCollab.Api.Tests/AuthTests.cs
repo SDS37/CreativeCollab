@@ -34,6 +34,83 @@ public sealed class AuthTests : IDisposable
     }
 
     [Fact]
+    public async Task A_wrong_password_and_an_unknown_email_get_the_same_generic_401()
+    {
+        var client = NewClient();
+        await client.RegisterAsync("ana@example.com");
+
+        var wrongPassword = await client.LoginAsync("ana@example.com", "not the right password");
+        var unknownEmail = await client.LoginAsync("nobody@example.com");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, wrongPassword.StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, unknownEmail.StatusCode);
+        var wrongBody = await wrongPassword.Content.ReadFromJsonAsync<JsonElement>();
+        var unknownBody = await unknownEmail.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.Equal(wrongBody.GetProperty("detail").GetString(), unknownBody.GetProperty("detail").GetString());
+        Assert.Equal(wrongBody.GetProperty("title").GetString(), unknownBody.GetProperty("title").GetString());
+        Assert.False(wrongPassword.Headers.Contains("Set-Cookie"));
+    }
+
+    [Fact]
+    public async Task Five_failed_sign_ins_lock_the_account_even_for_the_right_password()
+    {
+        // The 15 minute expiry is not asserted: Identity reads the system clock, not the injected TimeProvider.
+        var client = NewClient();
+        await client.RegisterAsync("ana@example.com");
+        for (var i = 0; i < 5; i++)
+            Assert.Equal(HttpStatusCode.Unauthorized, (await client.LoginAsync("ana@example.com", "wrong password here")).StatusCode);
+
+        var locked = await client.LoginAsync("ana@example.com");
+
+        Assert.Equal(HttpStatusCode.Locked, locked.StatusCode);
+        Assert.Contains("try again", await locked.Content.ReadAsStringAsync());
+        Assert.False(locked.Headers.Contains("Set-Cookie"));
+    }
+
+    [Fact]
+    public async Task Fewer_than_five_failures_followed_by_the_right_password_do_not_lock_the_account()
+    {
+        var client = NewClient();
+        await client.RegisterAsync("ana@example.com");
+        for (var i = 0; i < 4; i++) await client.LoginAsync("ana@example.com", "wrong password here");
+        Assert.Equal(HttpStatusCode.OK, (await client.LoginAsync("ana@example.com")).StatusCode);
+
+        for (var i = 0; i < 4; i++) await client.LoginAsync("ana@example.com", "wrong password here");
+
+        Assert.Equal(HttpStatusCode.OK, (await client.LoginAsync("ana@example.com")).StatusCode);
+    }
+
+    [Fact]
+    public async Task A_password_of_11_characters_is_refused_and_a_12_character_passphrase_with_no_symbols_is_accepted()
+    {
+        var client = NewClient();
+
+        var tooShort = await client.RegisterAsync("short@example.com", "abcdefghijk");
+        var passphrase = await client.RegisterAsync("long@example.com", "abcdefghijkl");
+
+        Assert.Equal(HttpStatusCode.BadRequest, tooShort.StatusCode);
+        var problem = await tooShort.Content.ReadFromJsonAsync<JsonElement>();
+        Assert.True(problem.GetProperty("errors").TryGetProperty("password", out _));
+        Assert.Equal(HttpStatusCode.Created, passphrase.StatusCode);
+    }
+
+    [Fact]
+    public async Task Registering_with_a_taken_or_invalid_email_or_without_a_display_name_is_a_400()
+    {
+        var client = NewClient();
+        await client.RegisterAsync("ana@example.com");
+
+        var taken = await client.RegisterAsync("ana@example.com");
+        var invalid = await client.RegisterAsync("not-an-email");
+        var noName = await client.RegisterAsync("bo@example.com", displayName: "");
+
+        Assert.Equal(HttpStatusCode.BadRequest, taken.StatusCode);
+        Assert.True((await taken.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("errors").TryGetProperty("email", out _));
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, noName.StatusCode);
+    }
+
+    [Fact]
     public async Task A_request_without_a_token_is_refused_with_401()
     {
         var response = await NewClient().MeAsync(accessToken: null);
