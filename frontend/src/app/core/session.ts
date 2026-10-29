@@ -6,8 +6,11 @@ import { AUTH_URL } from './api-config';
 
 export type Role = 'Viewer' | 'Editor' | 'Admin';
 
-/** Weakest first: a higher role may do everything a lower one may. */
-const ROLE_ORDER: readonly string[] = ['Viewer', 'Editor', 'Admin'];
+/** A higher rank may do everything a lower one may. */
+const ROLE_RANK: Record<Role, number> = { Viewer: 0, Editor: 1, Admin: 2 };
+
+/** The rank of a role name from a token, or -1 for a name this app does not know. */
+const rankOf = (role: string): number => (Object.hasOwn(ROLE_RANK, role) ? ROLE_RANK[role as Role] : -1);
 
 /** A token this close to expiring is renewed before it is used, so it does not lapse in flight. */
 const EXPIRY_MARGIN_SECONDS = 30;
@@ -63,8 +66,7 @@ export class Session {
   readonly canEdit = computed(() => this.hasRole('Editor'));
 
   hasRole(required: Role): boolean {
-    const needed = ROLE_ORDER.indexOf(required);
-    return this.roles().some((role) => ROLE_ORDER.indexOf(role) >= needed && ROLE_ORDER.indexOf(role) !== -1);
+    return this.roles().some((role) => rankOf(role) >= ROLE_RANK[required]);
   }
 
   async signIn(email: string, password: string): Promise<void> {
