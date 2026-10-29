@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using CreativeCollab.Api.Auth;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
@@ -25,7 +24,7 @@ public sealed class CreativeHub(PresenceTracker presence) : Hub
     public async Task<string[]> JoinCreative(Guid creativeId)
     {
         // The name is the account's, from the signed token. The client has no say in it.
-        var userName = Context.User?.FindFirstValue("name")
+        var userName = AccountClaims.NameOf(Context.User)
             ?? throw new HubException("The token has no name.");
 
         var group = GroupName(creativeId);

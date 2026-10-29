@@ -42,7 +42,7 @@ public static class CreativeEndpoints
 
     /// <summary>Who is acting, attested by the signed token. Never taken from the request body.</summary>
     private static string AccountName(ClaimsPrincipal user) =>
-        user.FindFirstValue("name") ?? throw new InvalidOperationException("An authorized token always carries a name.");
+        AccountClaims.NameOf(user) ?? throw new InvalidOperationException("An authorized token always carries a name.");
 
     private static IResult ImageProblem(string message) =>
         Results.ValidationProblem(new Dictionary<string, string[]> { ["imageUrl"] = [message] });

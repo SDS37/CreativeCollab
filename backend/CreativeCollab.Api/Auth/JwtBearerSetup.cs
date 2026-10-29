@@ -36,8 +36,8 @@ public sealed class JwtBearerSetup(IOptions<JwtOptions> jwt, TimeProvider time) 
                     && now <= expires.Value.ToUniversalTime() + parameters.ClockSkew
                     && (notBefore is null || now >= notBefore.Value.ToUniversalTime() - parameters.ClockSkew);
             },
-            NameClaimType = "name",
-            RoleClaimType = "role",
+            NameClaimType = AccountClaims.Name,
+            RoleClaimType = AccountClaims.Role,
         };
     }
 

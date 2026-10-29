@@ -28,10 +28,10 @@ public sealed class TokenService(IOptions<JwtOptions> options, TimeProvider time
             SigningCredentials = new SigningCredentials(JwtBearerSetup.SigningKey(_jwt), SecurityAlgorithms.HmacSha256),
             Claims = new Dictionary<string, object>
             {
-                [JwtRegisteredClaimNames.Sub] = user.Id,
-                [JwtRegisteredClaimNames.Name] = user.DisplayName,
-                [JwtRegisteredClaimNames.Jti] = Guid.NewGuid().ToString("N"),
-                ["role"] = roleList.Length == 1 ? roleList[0] : roleList,
+                [AccountClaims.Subject] = user.Id,
+                [AccountClaims.Name] = user.DisplayName,
+                [AccountClaims.TokenId] = Guid.NewGuid().ToString("N"),
+                [AccountClaims.Role] = roleList.Length == 1 ? roleList[0] : roleList,
             },
         };
         return new JsonWebTokenHandler().CreateToken(descriptor);
