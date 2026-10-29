@@ -1,0 +1,6 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "strict": true, "types": [] },
+  "include": ["src/**/*.d.ts", "src/**/*.ts", "playwright/**/*.ts"],
+  "exclude": ["src/**/*.spec.ts"]
+}
