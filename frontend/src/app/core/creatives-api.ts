@@ -4,13 +4,11 @@ import { map, Observable } from 'rxjs';
 import * as z from 'zod';
 import { CREATIVES_URL } from './api-config';
 import { Creative, creativeSchema, CreativeFields } from './creative.model';
-import { DisplayName } from './display-name';
 
 /** Thin wrapper over the Creatives HTTP endpoints. Errors are left raw for the store to translate. */
 @Service()
 export class CreativesApi {
   private readonly http = inject(HttpClient);
-  private readonly displayName = inject(DisplayName);
 
   list(): Observable<Creative[]> {
     return this.http.get<unknown>(CREATIVES_URL).pipe(map((body) => z.array(creativeSchema).parse(body)));
@@ -37,7 +35,6 @@ export class CreativesApi {
     return {
       ...rest,
       ...(imageUrl.trim() === '' ? {} : { imageUrl: imageUrl.trim() }),
-      displayName: this.displayName.value(),
     };
   }
 }

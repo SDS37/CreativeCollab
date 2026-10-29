@@ -88,19 +88,19 @@ describe('CreativeHubService', () => {
     hub = TestBed.inject(CreativeHubService);
   });
 
-  it('joins the Creative with the Display name and exposes Presence from the reply', async () => {
+  it('joins the Creative by id alone and exposes Presence from the reply', async () => {
     connection.joinResults[0] = ['Ada', 'Grace'];
 
-    await hub.join('1', 'Ada');
+    await hub.join('1');
 
-    expect(connection.invocations).toEqual([{ method: 'JoinCreative', args: ['1', 'Ada'] }]);
+    expect(connection.invocations).toEqual([{ method: 'JoinCreative', args: ['1'] }]);
     expect(hub.presence()).toEqual(['Ada', 'Grace']);
     expect(hub.connected()).toBe(true);
   });
 
   it('adds one entry per UserJoined and removes one entry per UserLeft', async () => {
     connection.joinResults[0] = ['Ada'];
-    await hub.join('1', 'Ada');
+    await hub.join('1');
 
     connection.raise('UserJoined', 'Grace');
     connection.raise('UserJoined', 'Grace');
@@ -114,7 +114,7 @@ describe('CreativeHubService', () => {
   });
 
   it('emits each updated Creative', async () => {
-    await hub.join('1', 'Ada');
+    await hub.join('1');
     const seen: Creative[] = [];
     hub.updated.subscribe((c) => seen.push(c));
 
@@ -124,7 +124,7 @@ describe('CreativeHubService', () => {
   });
 
   it('ignores a CreativeUpdated that is not a Creative', async () => {
-    await hub.join('1', 'Ada');
+    await hub.join('1');
     const seen: Creative[] = [];
     hub.updated.subscribe((c) => seen.push(c));
 
@@ -135,19 +135,19 @@ describe('CreativeHubService', () => {
 
   it('joins again after a reconnect and replaces Presence', async () => {
     connection.joinResults.push(['Ada', 'Linus']);
-    await hub.join('1', 'Ada');
+    await hub.join('1');
 
     connection.simulateReconnect();
     await Promise.resolve();
     await Promise.resolve();
 
     expect(connection.methods()).toEqual(['JoinCreative', 'JoinCreative']);
-    expect(connection.invocations[1].args).toEqual(['1', 'Ada']);
+    expect(connection.invocations[1].args).toEqual(['1']);
     expect(hub.presence()).toEqual(['Ada', 'Linus']);
   });
 
   it('leave tells the server, clears Presence and keeps the connection open', async () => {
-    await hub.join('1', 'Ada');
+    await hub.join('1');
 
     await hub.leave();
 
@@ -158,7 +158,7 @@ describe('CreativeHubService', () => {
   });
 
   it('dispose leaves the group, stops the connection, and is safe to repeat', async () => {
-    await hub.join('1', 'Ada');
+    await hub.join('1');
 
     await hub.dispose();
     await hub.dispose();
@@ -171,8 +171,8 @@ describe('CreativeHubService', () => {
 
   it('switches Creatives by leaving the old group first', async () => {
     connection.joinResults.push(['Ada']);
-    await hub.join('1', 'Ada');
-    await hub.join('2', 'Ada');
+    await hub.join('1');
+    await hub.join('2');
 
     expect(connection.invocations.map((i) => [i.method, i.args[0]])).toEqual([
       ['JoinCreative', '1'],
@@ -183,11 +183,11 @@ describe('CreativeHubService', () => {
   });
 
   it('opens a fresh connection when joined again after dispose', async () => {
-    await hub.join('1', 'Ada');
+    await hub.join('1');
     await hub.dispose();
     connection.joinResults.push(['Ada']);
 
-    await hub.join('1', 'Ada');
+    await hub.join('1');
 
     expect(created).toBe(2);
     expect(connection.starts).toBe(2);
@@ -196,7 +196,7 @@ describe('CreativeHubService', () => {
   it('reports no live connection and empty Presence when the server cannot be reached', async () => {
     connection.failStart = true;
 
-    await hub.join('1', 'Ada');
+    await hub.join('1');
 
     expect(hub.connected()).toBe(false);
     expect(hub.unavailable()).toBe(true);
@@ -204,7 +204,7 @@ describe('CreativeHubService', () => {
   });
 
   it('marks the connection as not live when it closes', async () => {
-    await hub.join('1', 'Ada');
+    await hub.join('1');
 
     connection.simulateClose();
 
@@ -213,7 +213,7 @@ describe('CreativeHubService', () => {
   });
 
   it('does not join if disposed while still connecting', async () => {
-    const joining = hub.join('1', 'Ada');
+    const joining = hub.join('1');
     const disposing = hub.dispose();
     await Promise.all([joining, disposing]);
 

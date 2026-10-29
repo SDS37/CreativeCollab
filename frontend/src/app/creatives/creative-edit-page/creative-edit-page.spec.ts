@@ -6,7 +6,7 @@ import { of, Subject } from 'rxjs';
 import { signal } from '@angular/core';
 import { Creative } from '../../core/creative.model';
 import { CreativeHubService } from '../../core/creative-hub';
-import { DisplayName } from '../../core/display-name';
+import { signInAs } from '../../core/session.testing';
 import { CreativeEditPage } from './creative-edit-page';
 
 const BASE = 'http://localhost:5114/api/creatives';
@@ -29,7 +29,7 @@ class FakeHub {
   readonly unavailable = signal(false);
   readonly updates = new Subject<Creative>();
   readonly updated = this.updates.asObservable();
-  readonly join = vi.fn(async (_id: number, _name: string) => {});
+  readonly join = vi.fn(async (_id: string) => {});
   readonly leave = vi.fn(async () => {});
   readonly dispose = vi.fn(async () => {});
 }
@@ -39,8 +39,7 @@ describe('CreativeEditPage', () => {
   let router: Router;
   let hub: FakeHub;
 
-  function setup(id: string | null): ComponentFixture<CreativeEditPage> {
-    localStorage.clear();
+  async function setup(id: string | null, role = 'Editor'): Promise<ComponentFixture<CreativeEditPage>> {
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
@@ -50,8 +49,8 @@ describe('CreativeEditPage', () => {
         { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap(id ? { id } : {})) } },
       ],
     });
-    TestBed.inject(DisplayName).set('Ada');
     http = TestBed.inject(HttpTestingController);
+    await signInAs('Ada', role);
     router = TestBed.inject(Router);
     return TestBed.createComponent(CreativeEditPage);
   }
@@ -77,7 +76,7 @@ describe('CreativeEditPage', () => {
   afterEach(() => http.verify());
 
   it('shows a loading state, then the Creative', async () => {
-    const fixture = setup('3');
+    const fixture = await setup('3');
     await fixture.whenStable();
     expect(text(fixture)).toContain('Loading');
 
@@ -90,18 +89,18 @@ describe('CreativeEditPage', () => {
 
   it('opens a Creative by the GUID id the API issues and joins its group with it', async () => {
     const guid = '41f18372-7214-4fa9-8968-529416310b43';
-    const fixture = setup(guid);
+    const fixture = await setup(guid);
     await fixture.whenStable();
 
     http.expectOne(`${BASE}/${guid}`).flush({ ...creative, id: guid });
     await fixture.whenStable();
 
     expect(field(fixture, 'headline').value).toBe('Fresh');
-    expect(hub.join).toHaveBeenCalledWith(guid, 'Ada');
+    expect(hub.join).toHaveBeenCalledWith(guid);
   });
 
   it('shows a not-found message for an unknown Creative', async () => {
-    const fixture = setup('99');
+    const fixture = await setup('99');
     await fixture.whenStable();
     http.expectOne(`${BASE}/99`).flush(null, { status: 404, statusText: 'Not Found' });
     await fixture.whenStable();
@@ -111,7 +110,7 @@ describe('CreativeEditPage', () => {
   });
 
   it('offers a retry when loading fails, and retries the same Creative', async () => {
-    const fixture = setup('3');
+    const fixture = await setup('3');
     await fixture.whenStable();
     http.expectOne(`${BASE}/3`).error(new ProgressEvent('error'));
     await fixture.whenStable();
@@ -122,7 +121,7 @@ describe('CreativeEditPage', () => {
   });
 
   it('saves edits with the loaded Version and shows the saved Version', async () => {
-    const fixture = setup('3');
+    const fixture = await setup('3');
     await fixture.whenStable();
     http.expectOne(`${BASE}/3`).flush(creative);
     await fixture.whenStable();
@@ -134,7 +133,7 @@ describe('CreativeEditPage', () => {
     expect(req.request.method).toBe('PUT');
     expect(req.request.body.version).toBe(2);
     expect(req.request.body.headline).toBe('Fresher');
-    expect(req.request.body.displayName).toBe('Ada');
+    expect(req.request.body).not.toHaveProperty('displayName');
     req.flush({ ...creative, headline: 'Fresher', version: 3 });
     await fixture.whenStable();
 
@@ -142,7 +141,7 @@ describe('CreativeEditPage', () => {
   });
 
   it('keeps the Draft and shows field messages when the server rejects it', async () => {
-    const fixture = setup('3');
+    const fixture = await setup('3');
     await fixture.whenStable();
     http.expectOne(`${BASE}/3`).flush(creative);
     await fixture.whenStable();
@@ -163,7 +162,7 @@ describe('CreativeEditPage', () => {
     const latest = { ...creative, version: 3, headline: 'Grace headline', body: 'Grace body', updatedBy: 'Grace' };
 
     async function conflicted(): Promise<ComponentFixture<CreativeEditPage>> {
-      const fixture = setup('3');
+      const fixture = await setup('3');
       await fixture.whenStable();
       http.expectOne(`${BASE}/3`).flush(creative);
       await fixture.whenStable();
@@ -222,7 +221,7 @@ describe('CreativeEditPage', () => {
     });
 
     it('says Another Collaborator when the newer Version has no recorded name', async () => {
-      const fixture = setup('3');
+      const fixture = await setup('3');
       await fixture.whenStable();
       http.expectOne(`${BASE}/3`).flush(creative);
       await fixture.whenStable();
@@ -239,20 +238,20 @@ describe('CreativeEditPage', () => {
     const remote = { ...creative, version: 3, headline: 'Grace headline', updatedBy: 'Grace' };
 
     async function opened(): Promise<ComponentFixture<CreativeEditPage>> {
-      const fixture = setup('3');
+      const fixture = await setup('3');
       await fixture.whenStable();
       http.expectOne(`${BASE}/3`).flush(creative);
       await fixture.whenStable();
       return fixture;
     }
 
-    it('joins the Creative group with the Display name', async () => {
+    it('joins the Creative group by id', async () => {
       await opened();
-      expect(hub.join).toHaveBeenCalledWith('3', 'Ada');
+      expect(hub.join).toHaveBeenCalledWith('3');
     });
 
     it('does not join anything on the create page', async () => {
-      const fixture = setup(null);
+      const fixture = await setup(null);
       await fixture.whenStable();
       expect(hub.join).not.toHaveBeenCalled();
     });
@@ -367,7 +366,7 @@ describe('CreativeEditPage', () => {
   });
 
   it('creates a new Creative and opens it', async () => {
-    const fixture = setup(null);
+    const fixture = await setup(null);
     const navigate = vi.spyOn(router, 'navigate').mockResolvedValue(true);
     await fixture.whenStable();
 
@@ -384,5 +383,42 @@ describe('CreativeEditPage', () => {
     await fixture.whenStable();
 
     expect(navigate).toHaveBeenCalledWith(['/creatives', '8'], { replaceUrl: true });
+  });
+
+  describe('for a Viewer', () => {
+    async function opened(): Promise<ComponentFixture<CreativeEditPage>> {
+      const fixture = await setup('3', 'Viewer');
+      await fixture.whenStable();
+      http.expectOne(`${BASE}/3`).flush(creative);
+      await fixture.whenStable();
+      return fixture;
+    }
+
+    it('shows the Creative read-only, with no Save', async () => {
+      const fixture = await opened();
+
+      expect(field(fixture, 'headline').value).toBe('Fresh');
+      expect(field(fixture, 'headline').disabled).toBe(true);
+      expect((fixture.nativeElement as HTMLElement).querySelector('button[type="submit"]')).toBeNull();
+      expect(text(fixture)).toContain('read-only');
+    });
+
+    it('still joins the group to see Presence and live updates', async () => {
+      const fixture = await opened();
+      hub.presence.set(['Grace']);
+      await fixture.whenStable();
+
+      expect(hub.join).toHaveBeenCalledWith('3');
+      expect(text(fixture)).toContain('Grace');
+    });
+
+    it('adopts a live update from someone else', async () => {
+      const fixture = await opened();
+
+      hub.updates.next({ ...creative, headline: 'Fresher', version: 3, updatedBy: 'Grace' });
+      await fixture.whenStable();
+
+      expect(field(fixture, 'headline').value).toBe('Fresher');
+    });
   });
 });

@@ -27,6 +27,8 @@ const FIELDS: readonly FieldConfig[] = [
 export class CreativeForm {
   readonly creative = input<Creative | null>(null);
   readonly saving = input(false);
+  /** A Viewer sees the fields but cannot change or save them. */
+  readonly readOnly = input(false);
   readonly fieldErrors = input<Record<string, string[]>>({});
 
   /** The Collaborator's current Draft, emitted on every change and after a reset. */
@@ -65,8 +67,16 @@ export class CreativeForm {
     });
   });
 
+  private readonly lockWhenReadOnly = effect(() => {
+    if (this.readOnly()) {
+      this.form.disable({ emitEvent: false });
+    } else {
+      this.form.enable({ emitEvent: false });
+    }
+  });
+
   protected submit(): void {
-    if (this.form.valid && !this.saving()) {
+    if (this.form.valid && !this.saving() && !this.readOnly()) {
       this.saved.emit(this.draft());
     }
   }

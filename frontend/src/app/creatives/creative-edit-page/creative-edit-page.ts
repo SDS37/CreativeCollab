@@ -4,7 +4,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { CreativeSignalStore } from '../../core/creative-signal-store';
 import { CreativeHubService } from '../../core/creative-hub';
 import { CreativeFields, sameFields, toFields } from '../../core/creative.model';
-import { DisplayName } from '../../core/display-name';
+import { Session } from '../../core/session';
 import { ConflictBanner } from '../conflict-banner/conflict-banner';
 import { CreativeForm } from '../creative-form/creative-form';
 import { PresenceBar } from '../presence-bar/presence-bar';
@@ -20,7 +20,10 @@ export class CreativeEditPage {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   protected readonly hub = inject(CreativeHubService);
-  private readonly displayName = inject(DisplayName);
+  private readonly session = inject(Session);
+
+  /** Viewers can open a Creative and follow it live, but the form is read-only. The API enforces this too. */
+  protected readonly readOnly = computed(() => !this.session.canEdit());
 
   /** The id in the route, or null on the create page. */
   private readonly id = signal<string | null>(null);
@@ -35,7 +38,9 @@ export class CreativeEditPage {
     return draft !== null && selected !== null && !sameFields(draft, toFields(selected));
   });
 
-  protected readonly heading = computed(() => (this.id() === null ? 'New Creative' : 'Edit Creative'));
+  protected readonly heading = computed(() =>
+    this.id() === null ? 'New Creative' : this.readOnly() ? 'View Creative' : 'Edit Creative',
+  );
 
   protected readonly summary = computed(() => {
     const selected = this.store.selected();
@@ -64,7 +69,7 @@ export class CreativeEditPage {
     if (id === null) {
       void this.hub.leave();
     } else {
-      void this.hub.join(id, this.displayName.value());
+      void this.hub.join(id);
     }
   });
 
@@ -106,6 +111,9 @@ export class CreativeEditPage {
   }
 
   protected async save(fields: CreativeFields): Promise<void> {
+    if (this.readOnly()) {
+      return;
+    }
     const id = this.id();
     if (id === null) {
       const created = await this.store.create(fields);

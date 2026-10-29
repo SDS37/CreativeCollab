@@ -1,53 +1,62 @@
+import { provideHttpClient } from '@angular/common/http';
+import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { provideRouter, Router } from '@angular/router';
 import { App } from './app';
-import { DisplayName } from './core/display-name';
+import { Session } from './core/session';
+import { signInAs } from './core/session.testing';
 
-describe('App', () => {
+describe('App shell', () => {
   let fixture: ComponentFixture<App>;
+  let http: HttpTestingController;
 
   const el = () => fixture.nativeElement as HTMLElement;
 
   function create(): void {
-    TestBed.configureTestingModule({ providers: [provideRouter([])] });
+    TestBed.configureTestingModule({
+      providers: [
+        provideHttpClient(),
+        provideHttpClientTesting(),
+        provideRouter([{ path: 'login', children: [] }]),
+      ],
+    });
+    http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(App);
   }
 
-  beforeEach(() => localStorage.clear());
+  afterEach(() => http.verify());
 
-  it('asks for a Display name before anything else', async () => {
+  it('shows no account header while signed out', async () => {
     create();
     await fixture.whenStable();
 
-    expect(el().querySelector('app-display-name-prompt')).not.toBeNull();
-    expect(el().querySelector('router-outlet')).toBeNull();
-  });
-
-  it('remembers the name and lets the Collaborator in', async () => {
-    create();
-    await fixture.whenStable();
-
-    const input = el().querySelector('input') as HTMLInputElement;
-    input.value = 'Ada';
-    input.dispatchEvent(new Event('input'));
-    await fixture.whenStable();
-    (el().querySelector('button[type="submit"]') as HTMLButtonElement).click();
-    await fixture.whenStable();
-
-    expect(TestBed.inject(DisplayName).value()).toBe('Ada');
+    expect(el().querySelector('header.shell')).toBeNull();
     expect(el().querySelector('router-outlet')).not.toBeNull();
-    expect(el().textContent).toContain('Ada');
   });
 
-  it('lets the Collaborator change the name later', async () => {
-    localStorage.setItem('creativecollab.displayName', 'Ada');
+  it('shows the account name from the session, with no way to rename it', async () => {
     create();
+    await signInAs('Ada Lovelace');
     await fixture.whenStable();
+
+    expect(el().textContent).toContain('Signed in as Ada Lovelace');
+    expect(el().querySelector('.change-name')).toBeNull();
     expect(el().querySelector('app-display-name-prompt')).toBeNull();
+  });
 
-    (el().querySelector('button.change-name') as HTMLButtonElement).click();
+  it('signs out on the server, clears the session and goes to login', async () => {
+    create();
+    await signInAs('Ada');
     await fixture.whenStable();
 
-    expect(el().querySelector('app-display-name-prompt')).not.toBeNull();
+    (el().querySelector('button.sign-out') as HTMLButtonElement).click();
+    const logout = http.expectOne('http://localhost:5114/api/auth/logout');
+    expect(logout.request.method).toBe('POST');
+    logout.flush(null, { status: 204, statusText: 'No Content' });
+    await fixture.whenStable();
+
+    expect(TestBed.inject(Session).isSignedIn()).toBe(false);
+    expect(TestBed.inject(Router).url).toBe('/login');
+    expect(el().querySelector('header.shell')).toBeNull();
   });
 });

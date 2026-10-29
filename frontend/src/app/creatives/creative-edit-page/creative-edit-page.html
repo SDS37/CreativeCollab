@@ -13,6 +13,10 @@
   <p class="live-off" role="status">Live updates are unavailable. Changes by others will not appear until you reload.</p>
 }
 
+@if (readOnly()) {
+  <p class="read-only" role="status">This Creative is read-only for your role. You still see live updates and who has it open.</p>
+}
+
 @if (store.loading()) {
   <p role="status">Loading…</p>
 }
@@ -42,6 +46,7 @@
   <app-creative-form
     [creative]="store.selected()"
     [saving]="store.saving()"
+    [readOnly]="readOnly()"
     [fieldErrors]="fieldErrors()"
     (draftChange)="onDraftChange($event)"
     (saved)="save($event)"

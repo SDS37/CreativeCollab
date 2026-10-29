@@ -3,21 +3,29 @@ import { HubConnection, HubConnectionBuilder, HubConnectionState } from '@micros
 import { Observable, Subject } from 'rxjs';
 import { HUB_URL } from './api-config';
 import { Creative, creativeSchema } from './creative.model';
+import { Session } from './session';
 
 /** Builds the SignalR connection. Replaced in tests with a fake. */
 export const HUB_CONNECTION_FACTORY = new InjectionToken<() => HubConnection>('HUB_CONNECTION_FACTORY', {
   providedIn: 'root',
-  factory: () => () => new HubConnectionBuilder().withUrl(HUB_URL).withAutomaticReconnect().build(),
+  factory: () => {
+    const session = inject(Session);
+    // Read again on every connect and reconnect, so a renewed token is used.
+    return () =>
+      new HubConnectionBuilder()
+        .withUrl(HUB_URL, { accessTokenFactory: () => session.accessToken() ?? '' })
+        .withAutomaticReconnect()
+        .build();
+  },
 });
 
 interface Group {
   id: string;
-  userName: string;
 }
 
 /**
  * The SignalR connection for the Creative a Collaborator has open. It exposes Presence
- * (one display name per open session) and the stream of saved Creatives. One group at a time.
+ * (one account name per open session) and the stream of saved Creatives. One group at a time.
  */
 @Service()
 export class CreativeHubService {
@@ -39,7 +47,7 @@ export class CreativeHubService {
   /** Bumped by every join and dispose, so a join that was overtaken stops quietly. */
   private epoch = 0;
 
-  async join(id: string, userName: string): Promise<void> {
+  async join(id: string): Promise<void> {
     const epoch = ++this.epoch;
     try {
       await this.leaveGroup();
@@ -53,7 +61,7 @@ export class CreativeHubService {
       if (epoch !== this.epoch) {
         return;
       }
-      this.group = { id, userName };
+      this.group = { id };
       this.presenceState.set(await this.invokeJoin(connection, this.group));
       this.connectedState.set(true);
       this.unavailable.set(false);
@@ -135,7 +143,7 @@ export class CreativeHubService {
   }
 
   private invokeJoin(connection: HubConnection, group: Group): Promise<string[]> {
-    return connection.invoke<string[]>('JoinCreative', group.id, group.userName);
+    return connection.invoke<string[]>('JoinCreative', group.id);
   }
 
   private async leaveGroup(): Promise<void> {

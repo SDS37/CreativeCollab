@@ -1,14 +1,12 @@
-@if (needsName()) {
-  <app-display-name-prompt [current]="displayName.value()" (confirmed)="confirm($event)" />
-} @else {
+@if (session.isSignedIn()) {
   <header class="shell">
     <strong>CreativeCollab</strong>
     <span>
-      Signed in as {{ displayName.value() }}
-      <button type="button" class="change-name" (click)="startChange()">Change name</button>
+      Signed in as {{ session.name() }}
+      <button type="button" class="sign-out" (click)="signOut()">Sign out</button>
     </span>
   </header>
-  <main>
-    <router-outlet />
-  </main>
 }
+<main>
+  <router-outlet />
+</main>

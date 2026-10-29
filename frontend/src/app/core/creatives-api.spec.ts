@@ -3,7 +3,6 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { Creative, CreativeFields } from './creative.model';
 import { CreativesApi } from './creatives-api';
-import { DisplayName } from './display-name';
 
 const BASE = 'http://localhost:5114/api/creatives';
 
@@ -31,7 +30,6 @@ describe('CreativesApi', () => {
   beforeEach(() => {
     localStorage.clear();
     TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
-    TestBed.inject(DisplayName).set('Ada');
     api = TestBed.inject(CreativesApi);
     http = TestBed.inject(HttpTestingController);
   });
@@ -58,7 +56,7 @@ describe('CreativesApi', () => {
     expect(result).toEqual(creative);
   });
 
-  it('creates with the Display name and omits an empty image URL', () => {
+  it('creates without any name and omits an empty image URL', () => {
     api.create(fields).subscribe();
 
     const req = http.expectOne(BASE);
@@ -68,12 +66,11 @@ describe('CreativesApi', () => {
       headline: 'Fresh',
       body: 'Buy now',
       cta: 'Shop',
-      displayName: 'Ada',
     });
     req.flush(creative);
   });
 
-  it('updates with the loaded Version and the Display name, sending a present image URL', () => {
+  it('updates with the loaded Version and no name, sending a present image URL', () => {
     api.update('1', { ...fields, imageUrl: 'https://x.test/a.png' }, 3).subscribe();
 
     const req = http.expectOne(`${BASE}/1`);
@@ -84,7 +81,6 @@ describe('CreativesApi', () => {
       body: 'Buy now',
       cta: 'Shop',
       imageUrl: 'https://x.test/a.png',
-      displayName: 'Ada',
       version: 3,
     });
     req.flush(creative);

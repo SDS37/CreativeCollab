@@ -1,26 +1,19 @@
-import { Component, computed, inject, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
-import { DisplayName } from './core/display-name';
-import { DisplayNamePrompt } from './display-name-prompt/display-name-prompt';
+import { Component, inject } from '@angular/core';
+import { Router, RouterOutlet } from '@angular/router';
+import { Session } from './core/session';
 
 @Component({
-  imports: [RouterOutlet, DisplayNamePrompt],
+  imports: [RouterOutlet],
   selector: 'app-root',
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
 export class App {
-  protected readonly displayName = inject(DisplayName);
-  private readonly changing = signal(false);
+  protected readonly session = inject(Session);
+  private readonly router = inject(Router);
 
-  protected readonly needsName = computed(() => !this.displayName.isSet() || this.changing());
-
-  protected startChange(): void {
-    this.changing.set(true);
-  }
-
-  protected confirm(name: string): void {
-    this.displayName.set(name);
-    this.changing.set(false);
+  protected async signOut(): Promise<void> {
+    await this.session.signOut();
+    await this.router.navigate(['/login']);
   }
 }

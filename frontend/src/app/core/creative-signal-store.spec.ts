@@ -3,7 +3,7 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { Creative, CreativeFields } from './creative.model';
 import { CreativeSignalStore } from './creative-signal-store';
-import { DisplayName } from './display-name';
+import { signInAs } from './session.testing';
 
 const BASE = 'http://localhost:5114/api/creatives';
 
@@ -17,12 +17,11 @@ describe('CreativeSignalStore', () => {
   let store: InstanceType<typeof CreativeSignalStore>;
   let http: HttpTestingController;
 
-  beforeEach(() => {
-    localStorage.clear();
+  beforeEach(async () => {
     TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
-    TestBed.inject(DisplayName).set('Ada');
-    store = TestBed.inject(CreativeSignalStore);
     http = TestBed.inject(HttpTestingController);
+    await signInAs('Ada');
+    store = TestBed.inject(CreativeSignalStore);
   });
 
   afterEach(() => http.verify());

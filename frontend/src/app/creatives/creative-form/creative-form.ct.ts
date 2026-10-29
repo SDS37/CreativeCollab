@@ -66,7 +66,15 @@ test('cannot be saved while saving or when a required field is empty', async ({ 
   await expect(save).toBeDisabled();
 });
 
-test('shows the server message for a rejected field', async ({ mount }) => {
+test('is read-only for a Viewer: fields are locked and there is no Save', async ({ mount }) => {
+  const component = await mount(CreativeForm, { props: { creative, readOnly: true } });
+
+  await expect(component.locator('[name="headline"]')).toHaveValue('Fresh');
+  await expect(component.locator('[name="headline"]')).toBeDisabled();
+  await expect(component.getByRole('button', { name: 'Save' })).toHaveCount(0);
+});
+
+test('shows the server message for a rejected field',async ({ mount }) => {
   const component = await mount(CreativeForm, {
     props: { creative, fieldErrors: { headline: ['Headline is too long'] } },
   });

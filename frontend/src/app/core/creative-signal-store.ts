@@ -3,11 +3,11 @@ import { inject } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
 import { firstValueFrom, Observable, Subscription } from 'rxjs';
 import { Creative, creativeSchema, CreativeFields } from './creative.model';
-import { DisplayName } from './display-name';
+import { Session } from './session';
 import { CreativesApi } from './creatives-api';
 import { rebase } from './rebase';
 
-export type ApiErrorKind = 'network' | 'not-found' | 'validation' | 'server';
+export type ApiErrorKind = 'network' | 'not-found' | 'validation' | 'forbidden' | 'server';
 
 export interface ApiError {
   kind: ApiErrorKind;
@@ -45,7 +45,7 @@ const initialState: CreativeState = {
 export const CreativeSignalStore = signalStore(
   { providedIn: 'root' },
   withState(initialState),
-  withMethods((store, api = inject(CreativesApi), displayName = inject(DisplayName)) => {
+  withMethods((store, api = inject(CreativesApi), session = inject(Session)) => {
     let inFlight: Subscription | undefined;
 
     const load = <T>(request: Observable<T>, onResult: (result: T) => void): void => {
@@ -154,7 +154,7 @@ export const CreativeSignalStore = signalStore(
           return;
         }
         // The echo of my own save can arrive before the HTTP response that carries the same Creative.
-        if (store.saving() && incoming.updatedBy === displayName.value()) {
+        if (store.saving() && incoming.updatedBy === session.name()) {
           return;
         }
         if (conflict) {
@@ -197,6 +197,8 @@ function toApiError(error: unknown): ApiError {
         message: 'Cannot reach the server. Check that the API is running.',
         fieldErrors: {},
       };
+    case 403:
+      return { kind: 'forbidden', message: 'Your role does not allow that.', fieldErrors: {} };
     case 404:
       return { kind: 'not-found', message: 'That Creative does not exist.', fieldErrors: {} };
     case 400:

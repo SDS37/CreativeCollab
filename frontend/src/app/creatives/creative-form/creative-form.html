@@ -12,7 +12,9 @@
       }
     </div>
   }
-  <button type="submit" [disabled]="form.invalid || saving()">
-    {{ saveLabel() }}
-  </button>
+  @if (!readOnly()) {
+    <button type="submit" [disabled]="form.invalid || saving()">
+      {{ saveLabel() }}
+    </button>
+  }
 </form>
