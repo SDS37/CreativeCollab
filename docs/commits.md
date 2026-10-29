@@ -32,6 +32,7 @@ Use the area the change lives in.
 | api | `backend/CreativeCollab.Api` |
 | tests | `backend/CreativeCollab.Api.Tests` |
 | web | Angular app in `frontend/` |
+| e2e | Playwright suite in `e2e/` |
 | docs | Documentation |
 | mcp | `.mcp.json` and `.cursor/mcp.json` |
 
