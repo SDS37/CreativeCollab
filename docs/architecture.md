@@ -128,7 +128,7 @@ Endpoints stay thin. The rules live in the service, the store, and the hub clien
 
 ## Frontend today
 
-`frontend/` is an Angular 22 app (standalone, Signals). Screen state is an NgRx signal store (`@ngrx/signals`), not a Redux store and not a service. Angular 22 makes OnPush the default, so no component sets it. Tests run on Vitest through `ng test`, with HTTP mocked by `HttpTestingController`, so no API is needed. Playwright in `e2e/` drives two browsers against the running API. The API is called directly at `http://localhost:5114` (`core/api-config.ts`).
+`frontend/` is an Angular 22 app (standalone, Signals). Screen state is an NgRx signal store (`@ngrx/signals`), not a Redux store and not a service. Angular 22 makes OnPush the default, so no component sets it. Logic specs and the edit page spec run on Vitest through `ng test`, with HTTP mocked by `HttpTestingController`, so no API is needed. The other components and the list page are tested in a real browser with Playwright component tests (`*.ct.ts`, `@sand4rt/experimental-ct-angular`, [ADR 0005](adr/0005-experimental-playwright-component-testing.md)); the list page answers HTTP with `page.route`. Playwright in `e2e/` drives two browsers against the running API. The API is called directly at `http://localhost:5114` (`core/api-config.ts`).
 
 Routes: `/creatives` (list), `/creatives/new`, and `/creatives/:id` (the same edit page). The page is the controller. The store, the API client, and the hub client are the model. The components under them are views: they take inputs and emit outputs, and they do not call the API.
 
@@ -180,7 +180,9 @@ flowchart TB
 
 ```bash
 cd frontend && npm install && npm start     # http://localhost:4200
-cd frontend && npm test -- --watch=false
+cd frontend && npm test -- --watch=false    # Vitest
+cd frontend && npm run test:ct:install      # once: Chromium for the component tests
+cd frontend && npm run test:ct              # Playwright component tests
 ```
 
 | Piece | Where | Behaviour |
