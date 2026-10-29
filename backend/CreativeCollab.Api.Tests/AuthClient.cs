@@ -9,7 +9,7 @@ namespace CreativeCollab.Api.Tests;
 /// <summary>Test configuration that must exist before any host starts: the signing key is never committed in appsettings.</summary>
 internal static class TestSigningKey
 {
-    public const string Value = "test-only-signing-key-0123456789-abcdefghijkl";
+    public const string Value = "test-only-signing-key-0123456789-abcdefghijklmnopqrstuvwxyz-ABCDEF";
 
     [ModuleInitializer]
     internal static void Supply() => Environment.SetEnvironmentVariable("Jwt__Key", Value);
