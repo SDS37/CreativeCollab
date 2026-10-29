@@ -57,6 +57,8 @@ builder.Services.AddSingleton<IConfigureOptions<JwtBearerOptions>, JwtBearerSetu
 builder.Services.AddAuthorization(options => options.AddCreativeCollabPolicies());
 builder.Services.AddSingleton<TokenService>();
 builder.Services.AddScoped<SessionService>();
+builder.Services.AddScoped<AccountService>();
+builder.Services.AddScoped<RoleService>();
 builder.Services.Configure<AuthRateLimitOptions>(builder.Configuration.GetSection("RateLimiting:Auth"));
 builder.Services.AddRateLimiter(options =>
 {

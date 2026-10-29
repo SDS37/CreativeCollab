@@ -1,25 +1,25 @@
 using CreativeCollab.Api.Data;
-using CreativeCollab.Api.Endpoints;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
 namespace CreativeCollab.Api.Auth;
 
+/// <summary>What a started or renewed Session hands back: the access token, and the refresh token the caller keeps until <paramref name="RefreshExpires"/>.</summary>
+public sealed record IssuedSession(AccessTokenResponse Access, string RefreshToken, DateTimeOffset RefreshExpires);
+
 /// <summary>
-/// Sessions: an access token for the response body and a refresh token in a scoped HttpOnly cookie.
+/// Sessions: an access token and a refresh token. How the refresh token travels (a scoped HttpOnly cookie) is the endpoint layer's business.
 /// A refresh token is single use. Presenting one that was already used or revoked revokes its whole family.
 /// </summary>
 public sealed class SessionService(CreativeDbContext db, TokenService tokens, UserManager<AppUser> users, TimeProvider time)
 {
-    public const string RefreshCookieName = "refresh_token";
-
-    /// <summary>Rows this long past expiry, or this long since revocation, are deleted. Opportunistic: it runs on login and refresh.</summary>
+    /// <summary>Rows this long past expiry, or this long since revocation, are deleted. Opportunistic: it runs on sign-in and refresh.</summary>
     public static readonly TimeSpan Retention = TimeSpan.FromDays(7);
 
-    public async Task<AccessTokenResponse> StartAsync(AppUser user, HttpContext http)
+    public async Task<IssuedSession> StartAsync(AppUser user, CancellationToken ct)
     {
-        await PurgeAsync(http.RequestAborted);
-        return await IssueAsync(user, familyId: Guid.NewGuid(), http);
+        await PurgeAsync(ct);
+        return await IssueAsync(user, familyId: Guid.NewGuid(), ct);
     }
 
     private async Task PurgeAsync(CancellationToken ct)
@@ -30,24 +30,23 @@ public sealed class SessionService(CreativeDbContext db, TokenService tokens, Us
             .ExecuteDeleteAsync(ct);
     }
 
-    /// <summary>Rotates the refresh token in the cookie. Null means the caller must sign in again.</summary>
-    public async Task<AccessTokenResponse?> RefreshAsync(HttpContext http)
+    /// <summary>Rotates the presented refresh token. Null means the caller must sign in again.</summary>
+    public async Task<IssuedSession?> RefreshAsync(string? refreshToken, CancellationToken ct)
     {
-        var ct = http.RequestAborted;
         await PurgeAsync(ct);
-        var presented = await FindAsync(http, ct);
+        var presented = await FindAsync(refreshToken, ct);
         if (presented is null)
-            return Reject(http);
+            return null;
 
         if (presented.UsedAt is not null || presented.RevokedAt is not null)
         {
             await RevokeFamilyAsync(presented.FamilyId, ct);
-            return Reject(http);
+            return null;
         }
 
         var now = time.GetUtcNow();
         if (presented.ExpiresAt <= now)
-            return Reject(http);
+            return null;
 
         // The compare-and-set makes rotation single use even when two requests race.
         var rotated = await db.RefreshTokens
@@ -56,45 +55,43 @@ public sealed class SessionService(CreativeDbContext db, TokenService tokens, Us
         if (rotated == 0)
         {
             await RevokeFamilyAsync(presented.FamilyId, ct);
-            return Reject(http);
+            return null;
         }
 
         var user = await users.FindByIdAsync(presented.UserId);
         if (user is null || await users.IsLockedOutAsync(user))
         {
             await RevokeFamilyAsync(presented.FamilyId, ct);
-            return Reject(http);
+            return null;
         }
 
-        return await IssueAsync(user, presented.FamilyId, http);
+        return await IssueAsync(user, presented.FamilyId, ct);
     }
 
-    /// <summary>Revokes the session the cookie belongs to, if any, and clears the cookie.</summary>
-    public async Task EndAsync(HttpContext http)
+    /// <summary>Revokes the Session the presented refresh token belongs to, if any.</summary>
+    public async Task EndAsync(string? refreshToken, CancellationToken ct)
     {
-        if (await FindAsync(http, http.RequestAborted) is { } presented)
-            await RevokeFamilyAsync(presented.FamilyId, http.RequestAborted);
-        ClearCookie(http);
+        if (await FindAsync(refreshToken, ct) is { } presented)
+            await RevokeFamilyAsync(presented.FamilyId, ct);
     }
 
-    private async Task<AccessTokenResponse> IssueAsync(AppUser user, Guid familyId, HttpContext http)
+    private async Task<IssuedSession> IssueAsync(AppUser user, Guid familyId, CancellationToken ct)
     {
         var (token, hash) = TokenService.NewRefreshToken();
         var expires = time.GetUtcNow() + tokens.RefreshTokenLifetime;
         db.RefreshTokens.Add(new RefreshToken { Id = Guid.NewGuid(), UserId = user.Id, FamilyId = familyId, TokenHash = hash, ExpiresAt = expires });
-        await db.SaveChangesAsync(http.RequestAborted);
+        await db.SaveChangesAsync(ct);
 
-        http.Response.Cookies.Append(RefreshCookieName, token, CookieOptions(expires));
         // Roles are read now, so a role change takes effect the next time the session renews.
         var access = tokens.CreateAccessToken(user, await users.GetRolesAsync(user));
-        return new AccessTokenResponse(access, (int)tokens.AccessTokenLifetime.TotalSeconds);
+        return new IssuedSession(new AccessTokenResponse(access, (int)tokens.AccessTokenLifetime.TotalSeconds), token, expires);
     }
 
-    private async Task<RefreshToken?> FindAsync(HttpContext http, CancellationToken ct)
+    private async Task<RefreshToken?> FindAsync(string? refreshToken, CancellationToken ct)
     {
-        if (!http.Request.Cookies.TryGetValue(RefreshCookieName, out var token) || string.IsNullOrEmpty(token))
+        if (string.IsNullOrEmpty(refreshToken))
             return null;
-        var hash = TokenService.Hash(token);
+        var hash = TokenService.Hash(refreshToken);
         return await db.RefreshTokens.AsNoTracking().FirstOrDefaultAsync(t => t.TokenHash == hash, ct);
     }
 
@@ -105,23 +102,4 @@ public sealed class SessionService(CreativeDbContext db, TokenService tokens, Us
             .Where(t => t.FamilyId == familyId && t.RevokedAt == null)
             .ExecuteUpdateAsync(s => s.SetProperty(t => t.RevokedAt, now), ct);
     }
-
-    private static AccessTokenResponse? Reject(HttpContext http)
-    {
-        ClearCookie(http);
-        return null;
-    }
-
-    private static void ClearCookie(HttpContext http) =>
-        http.Response.Cookies.Delete(RefreshCookieName, CookieOptions(expires: null));
-
-    private static CookieOptions CookieOptions(DateTimeOffset? expires) => new()
-    {
-        HttpOnly = true,
-        Secure = true,
-        SameSite = SameSiteMode.Strict,
-        Path = AuthEndpoints.BasePath,
-        Expires = expires,
-        IsEssential = true,
-    };
 }
