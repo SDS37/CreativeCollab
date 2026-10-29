@@ -52,7 +52,7 @@ builder.Services.AddIdentityCore<AppUser>(options =>
     .AddEntityFrameworkStores<CreativeDbContext>();
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
 builder.Services.AddSingleton<IConfigureOptions<JwtBearerOptions>, JwtBearerSetup>();
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options => options.AddCreativeCollabPolicies());
 builder.Services.AddSingleton<TokenService>();
 builder.Services.AddScoped<SessionService>();
 builder.Services.Configure<AuthRateLimitOptions>(builder.Configuration.GetSection("RateLimiting:Auth"));
@@ -93,6 +93,7 @@ await app.SeedFirstAdminAsync();
 
 app.MapCreativeEndpoints();
 app.MapAuthEndpoints();
+app.MapAdminEndpoints();
 app.MapHub<CreativeHub>("/hubs/creatives");
 
 app.Run();

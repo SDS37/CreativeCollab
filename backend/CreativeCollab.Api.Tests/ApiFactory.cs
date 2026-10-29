@@ -1,5 +1,6 @@
 using System.Net;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -66,7 +67,19 @@ public sealed class ApiFactory(
         var host = base.CreateHost(builder);
         using var scope = host.Services.CreateScope();
         scope.ServiceProvider.GetRequiredService<CreativeDbContext>().Database.Migrate();
+        SeedAdmin(scope.ServiceProvider);
         return host;
+    }
+
+    /// <summary>The Admin every test host starts with, a real account that signs in like any other.</summary>
+    public const string AdminEmail = "root@example.com";
+
+    private static void SeedAdmin(IServiceProvider services)
+    {
+        var users = services.GetRequiredService<UserManager<AppUser>>();
+        var admin = new AppUser { UserName = AdminEmail, Email = AdminEmail, DisplayName = "Root" };
+        Assert.True(users.CreateAsync(admin, AuthClient.Password).GetAwaiter().GetResult().Succeeded);
+        Assert.True(users.AddToRoleAsync(admin, AccountRoles.Admin).GetAwaiter().GetResult().Succeeded);
     }
 
     protected override void Dispose(bool disposing)
