@@ -1,6 +1,6 @@
 # Architecture
 
-> **v2 almost done.** The API and the Angular app both run on JWT accounts and roles ([ADR 0003](adr/0003-authenticated-collaborators-with-jwt.md)). What remains is slice #20: the Playwright suite in `e2e/` still drives the v1 Display name flow and has not been moved to two real accounts, and the live connection does not yet renew its token after a long drop before it reconnects. Remove this note when #20 lands. See [evolution](evolution.md) for v1 vs v2, and [archive/v1](archive/v1/architecture.md) for the frozen v1 copy.
+> The API and the Angular app run on JWT accounts and roles ([ADR 0003](adr/0003-authenticated-collaborators-with-jwt.md)). See [evolution](evolution.md) for v1 vs v2, and [archive/v1](archive/v1/architecture.md) for the frozen v1 copy.
 
 CreativeCollab is one API and one Angular app. The API owns the Creative. The browser owns the Draft. A save sends the Version the Collaborator loaded. The API accepts it or returns a Conflict.
 

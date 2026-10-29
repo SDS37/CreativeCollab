@@ -26,8 +26,8 @@ Status: **steps 1–8 are in the tree.** The map of the running system is [docs/
 - No delete endpoint or UI (list / view / edit / create only).
 - Everything is implemented correctly. There are no planted flaws.
 - `updatedAt` comes from an injected `TimeProvider`.
-- Identity: the user types a display name, stored in localStorage and sent with requests and the hub join. It is trusted and unauthenticated, and flagged as such in the notes. Light auth is out of scope.
-- Every create/update requires a display name (400 if missing). `updatedBy` is empty only for seeded creatives.
+- Identity (v1, superseded by [ADR 0003](docs/adr/0003-authenticated-collaborators-with-jwt.md)): the user types a display name, stored in localStorage and sent with requests and the hub join. It is trusted and unauthenticated, and flagged as such in the notes. Light auth is out of scope.
+- Every create/update requires a display name (400 if missing). `updatedBy` is empty only for seeded creatives. (v1; today the name comes from the signed-in account.)
 - Creative `name` is not unique, and the list sorts by most recently updated.
 - Vocabulary is defined in `GLOSSARY.md`; design rationale is in `docs/adr/`.
 

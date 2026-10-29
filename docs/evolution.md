@@ -21,3 +21,5 @@ How the app's identity and auth changed. v1 is frozen at git tag `v1-display-nam
 1. [v1 architecture](archive/v1/architecture.md) and [v1 glossary entries](archive/v1/glossary-people.md).
 2. [ADR 0003](adr/0003-authenticated-collaborators-with-jwt.md), which gives the reasons for the change.
 3. The live [architecture](architecture.md) and [glossary](../GLOSSARY.md), which are updated as each v2 slice merges.
+
+The transition is complete: the API, the Angular app and the end-to-end suite all run on v2. The live connection renews its token before every connect and reconnect, and stops when renewal fails. The Playwright suite registers two real accounts with unique emails and covers two Editors on one Creative, a Conflict that names the other account, Presence showing both account names, and a Viewer (role set through the Admin endpoint by the seeded Admin) who cannot create or edit but still sees live updates and Presence.
