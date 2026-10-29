@@ -30,7 +30,8 @@ test('emits the current Draft as the Collaborator types', async ({ mount }) => {
 
   await component.locator('[name="headline"]').fill('Fresher');
 
-  expect(drafts.at(-1)).toEqual({
+  // Events cross from the browser to the test asynchronously, so wait for the last one.
+  await expect.poll(() => drafts.at(-1)).toEqual({
     name: 'Spring',
     headline: 'Fresher',
     body: 'Buy now',

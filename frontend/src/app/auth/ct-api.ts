@@ -1,4 +1,4 @@
-import { Page, Route } from '@sand4rt/experimental-ct-angular';
+import type { Page, Route } from 'playwright/test';
 
 /** Shared by the auth screen component tests: the API answers on another origin, with credentials. */
 export const AUTH = 'http://localhost:5114/api/auth';

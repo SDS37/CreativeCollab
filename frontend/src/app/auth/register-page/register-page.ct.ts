@@ -1,4 +1,5 @@
-import { expect, Locator, test } from '@sand4rt/experimental-ct-angular';
+import { expect, test } from '@sand4rt/experimental-ct-angular';
+import type { Locator } from 'playwright/test';
 import { fakeAccessToken } from '../../core/session.testing';
 import { answer, reply } from '../ct-api';
 import { RegisterPage } from './register-page';

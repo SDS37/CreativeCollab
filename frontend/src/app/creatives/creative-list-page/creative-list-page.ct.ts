@@ -1,4 +1,5 @@
-import { expect, Page, test } from '@sand4rt/experimental-ct-angular';
+import { expect, test } from '@sand4rt/experimental-ct-angular';
+import type { Page } from 'playwright/test';
 import { answer, reply } from '../../auth/ct-api';
 import { fakeAccessToken } from '../../core/session.testing';
 import { Creative } from '../../core/creative.model';
