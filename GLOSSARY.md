@@ -37,7 +37,7 @@ _Avoid_: Overwrite, force save, merge
 ### People
 
 **Collaborator**:
-Anyone using the app, identified only by a Display name. Viewers count as Collaborators, not just those typing.
+Anyone using the app, signed in with an Account and acting under its role. Viewers count as Collaborators, not just those typing.
 _Avoid_: User, editor
 
 **Account**:
@@ -45,7 +45,7 @@ A registered identity with an email, a password, a Display name and one role (Vi
 _Avoid_: Profile, login
 
 **Display name**:
-The self-declared, unauthenticated name a Collaborator gives. It is trusted and not unique. It is recorded on a Creative as who last updated it, and it is empty only for seeded Creatives.
+The name on a Collaborator's Account, attested by the server from the signed token. It is not unique and the client cannot set or override it per request. It is recorded on a Creative as who last updated it and shown in Presence. Older Creatives keep whatever text was typed under the first design, with no link to an Account, and seeded Creatives have none.
 _Avoid_: Username, login
 
 **Presence**:
