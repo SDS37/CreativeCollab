@@ -2,11 +2,18 @@ import { expect, type APIRequestContext, type Page } from '@playwright/test';
 
 export const API = 'http://localhost:5114/api';
 
-/** The first Admin, seeded by the API from the config the Playwright web server passes it. */
+/**
+ * The first Admin, seeded by the API from the config the Playwright web server passes it. The password is
+ * generated per run in playwright.config.ts and handed over through the environment, so none is committed.
+ */
 export const ADMIN = {
   email: 'e2e-admin@example.test',
-  password: 'e2e admin passphrase 1',
   displayName: 'E2E Admin',
+  get password(): string {
+    const password = process.env.E2E_ADMIN_PASSWORD;
+    if (!password) throw new Error('E2E_ADMIN_PASSWORD is set by playwright.config.ts; run the suite through Playwright.');
+    return password;
+  },
 };
 
 const PASSWORD = 'a long e2e passphrase';
@@ -18,9 +25,11 @@ export interface Account {
   displayName: string;
 }
 
-/** Registers a new account with an email no other run uses. Register does not sign in. */
-export async function register(request: APIRequestContext, displayName: string): Promise<Account> {
-  const email = `${displayName.toLowerCase()}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.test`;
+/** Registers a new account with an email and a Display name no other test uses (names are unique). Register does not sign in. */
+export async function register(request: APIRequestContext, firstName: string): Promise<Account> {
+  const suffix = Math.random().toString(36).slice(2, 8);
+  const displayName = `${firstName} ${suffix}`;
+  const email = `${firstName.toLowerCase()}-${Date.now()}-${suffix}@example.test`;
   const response = await request.post(`${API}/auth/register`, { data: { email, password: PASSWORD, displayName } });
   expect(response.status()).toBe(201);
   const { id } = (await response.json()) as { id: string };

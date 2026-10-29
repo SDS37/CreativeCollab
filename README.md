@@ -36,7 +36,7 @@ npm test       # signal store, API, hub, and component tests
 
 To see a Conflict, register two accounts, sign in to each in its own browser window (or a private window), open the same Creative in both, save in one, then save in the other.
 
-**Playwright** (starts the API and the Angular app itself when they are not already running):
+**Playwright** (starts its own API, and the Angular app when it is not already running):
 
 ```bash
 cd e2e
@@ -45,7 +45,7 @@ npx playwright install chromium
 npm test
 ```
 
-The suite registers its own accounts with unique emails, uses the seeded Admin to make a Viewer, and drives two signed-in browsers. CI runs the backend tests, the Angular tests, and Playwright on every push to `main` and every pull request.
+The suite registers its own accounts with unique emails and names, uses the seeded Admin to make a Viewer, and drives two signed-in browsers. Each run generates a random Admin password and runs the API on a throwaway SQLite file in the temp directory (deleted afterwards), so no password is committed and your development database is never seeded or touched. It never reuses an API that is already running, so port 5114 must be free. CI runs the backend tests, the Angular tests, and Playwright on every push to `main` and every pull request.
 
 ## Known limitations
 

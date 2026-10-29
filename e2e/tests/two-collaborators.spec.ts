@@ -23,36 +23,36 @@ test('two accounts keep a dirty Draft, resolve the Conflict by name, and drop Pr
   await ann.getByLabel('Call to action').fill('Ann cta');
   await ann.getByRole('button', { name: 'Save' }).click();
 
-  await expect(ann.getByText('Version 1, last saved by Ann')).toBeVisible();
-  await expect(ann.getByText('Open now: Ann')).toBeVisible();
+  await expect(ann.getByText(`Version 1, last saved by ${annAccount.displayName}`)).toBeVisible();
+  await expect(ann.getByText(`Open now: ${annAccount.displayName}`)).toBeVisible();
 
   // A full page load: Bob signs in, then opens the same Creative as a restored session.
   const bob = await openAs(browser, bobAccount);
   await bob.goto(ann.url());
-  await expect(ann.getByText('Open now: Ann, Bob')).toBeVisible();
-  await expect(bob.getByText('Open now: Ann, Bob')).toBeVisible();
+  await expect(ann.getByText(`Open now: ${annAccount.displayName}, ${bobAccount.displayName}`)).toBeVisible();
+  await expect(bob.getByText(`Open now: ${annAccount.displayName}, ${bobAccount.displayName}`)).toBeVisible();
 
   await ann.getByLabel('Body').fill('Ann draft body');
   await bob.getByLabel('Headline').fill('Bob headline');
   await bob.getByRole('button', { name: 'Save' }).click();
-  await expect(bob.getByText('Version 2, last saved by Bob')).toBeVisible();
+  await expect(bob.getByText(`Version 2, last saved by ${bobAccount.displayName}`)).toBeVisible();
 
-  await expect(ann.getByText('Bob updated this Creative (Version 2)')).toBeVisible();
+  await expect(ann.getByText(`${bobAccount.displayName} updated this Creative (Version 2)`)).toBeVisible();
   await expect(ann.getByLabel('Body')).toHaveValue('Ann draft body');
   await expect(ann.getByLabel('Headline')).toHaveValue('Ann headline');
 
   await ann.getByRole('button', { name: 'Save' }).click();
-  await expect(ann.getByRole('alert')).toContainText('Bob saved a newer version');
+  await expect(ann.getByRole('alert')).toContainText(`${bobAccount.displayName} saved a newer version`);
   await ann.getByRole('button', { name: 'Keep my edits' }).click();
 
-  await expect(ann.getByText('Version 3, last saved by Ann')).toBeVisible();
+  await expect(ann.getByText(`Version 3, last saved by ${annAccount.displayName}`)).toBeVisible();
   await expect(ann.getByLabel('Body')).toHaveValue('Ann draft body');
   await expect(ann.getByLabel('Headline')).toHaveValue('Bob headline');
   await expect(bob.getByLabel('Body')).toHaveValue('Ann draft body');
-  await expect(bob.getByText('Version 3, last saved by Ann')).toBeVisible();
+  await expect(bob.getByText(`Version 3, last saved by ${annAccount.displayName}`)).toBeVisible();
 
   await bob.close();
-  await expect(ann.getByText('Open now: Ann')).toBeVisible();
+  await expect(ann.getByText(`Open now: ${annAccount.displayName}`)).toBeVisible();
 
   await ann.context().close();
   await bob.context().close();
@@ -70,7 +70,7 @@ test('a Viewer cannot create or edit, but sees live updates and Presence', async
   await ann.getByLabel('Body').fill('First body');
   await ann.getByLabel('Call to action').fill('First cta');
   await ann.getByRole('button', { name: 'Save' }).click();
-  await expect(ann.getByText('Version 1, last saved by Ann')).toBeVisible();
+  await expect(ann.getByText(`Version 1, last saved by ${annAccount.displayName}`)).toBeVisible();
 
   const viewer = await openAs(browser, veraAccount);
   await expect(viewer.getByRole('link', { name: 'New Creative' })).toHaveCount(0);
@@ -81,12 +81,12 @@ test('a Viewer cannot create or edit, but sees live updates and Presence', async
   await expect(viewer.getByText('This Creative is read-only for your role')).toBeVisible();
   await expect(viewer.getByLabel('Headline')).toBeDisabled();
   await expect(viewer.getByRole('button', { name: 'Save' })).toHaveCount(0);
-  await expect(viewer.getByText('Open now: Ann, Vera')).toBeVisible();
-  await expect(ann.getByText('Open now: Ann, Vera')).toBeVisible();
+  await expect(viewer.getByText(`Open now: ${annAccount.displayName}, ${veraAccount.displayName}`)).toBeVisible();
+  await expect(ann.getByText(`Open now: ${annAccount.displayName}, ${veraAccount.displayName}`)).toBeVisible();
 
   await ann.getByLabel('Headline').fill('Second headline');
   await ann.getByRole('button', { name: 'Save' }).click();
-  await expect(viewer.getByText('Version 2, last saved by Ann')).toBeVisible();
+  await expect(viewer.getByText(`Version 2, last saved by ${annAccount.displayName}`)).toBeVisible();
   await expect(viewer.getByLabel('Headline')).toHaveValue('Second headline');
 
   await ann.context().close();
