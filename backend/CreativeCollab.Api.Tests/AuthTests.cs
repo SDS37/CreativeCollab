@@ -132,6 +132,22 @@ public sealed class AuthTests : IDisposable
     }
 
     [Fact]
+    public async Task Changing_the_case_or_adding_a_slash_to_the_login_path_does_not_get_a_new_rate_limit_bucket()
+    {
+        var host = new ApiFactory(s => s.Configure<AuthRateLimitOptions>(o => o.PermitLimit = 3));
+        _hosts.Add(host);
+        var client = host.CreateClient();
+        string[] paths = ["/api/auth/login", "/API/AUTH/LOGIN", "/Api/Auth/Login", "/api/auth/login/"];
+
+        var statuses = new List<HttpStatusCode>();
+        foreach (var path in paths.Concat(paths))
+            statuses.Add((await client.PostAsJsonAsync(path, new { email = "ana@example.com", password = "wrong password here" })).StatusCode);
+
+        Assert.All(statuses.Take(3), s => Assert.NotEqual(HttpStatusCode.TooManyRequests, s));
+        Assert.All(statuses.Skip(3), s => Assert.Equal(HttpStatusCode.TooManyRequests, s));
+    }
+
+    [Fact]
     public async Task A_request_without_a_token_is_refused_with_401()
     {
         var response = await NewClient().MeAsync(accessToken: null);

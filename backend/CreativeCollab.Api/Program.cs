@@ -63,7 +63,9 @@ builder.Services.AddRateLimiter(options =>
     {
         var limit = http.RequestServices.GetRequiredService<IOptions<AuthRateLimitOptions>>().Value;
         var client = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        return RateLimitPartition.GetFixedWindowLimiter($"{http.Request.Path}|{client}", _ => new FixedWindowRateLimiterOptions
+        // Key on the matched endpoint, not the raw path: routing ignores case and a trailing slash, so the path would not.
+        var endpoint = http.GetEndpoint()?.DisplayName ?? http.Request.Path.Value?.TrimEnd('/').ToLowerInvariant() ?? "unknown";
+        return RateLimitPartition.GetFixedWindowLimiter($"{endpoint}|{client}", _ => new FixedWindowRateLimiterOptions
         {
             PermitLimit = limit.PermitLimit,
             Window = limit.Window,
