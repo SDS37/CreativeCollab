@@ -5,13 +5,12 @@ import { HUB_URL } from './api-config';
 import { Creative, creativeSchema } from './creative.model';
 import { Session } from './session';
 
-/** Builds the SignalR connection. Replaced in tests with a fake. */
-export type HubConnectionFactory = (accessTokenFactory: () => Promise<string>) => HubConnection;
-
 /**
  * Builds the SignalR connection. The token factory is asked for a token on every connect and reconnect.
  * Replaced in tests with a fake.
  */
+export type HubConnectionFactory = (accessTokenFactory: () => Promise<string>) => HubConnection;
+
 export const HUB_CONNECTION_FACTORY = new InjectionToken<HubConnectionFactory>('HUB_CONNECTION_FACTORY', {
   providedIn: 'root',
   factory: () => (accessTokenFactory) =>
@@ -63,12 +62,10 @@ export class CreativeHubService {
       }
       this.group = { id };
       this.presenceState.set(await this.invokeJoin(connection, this.group));
-      this.connectedState.set(true);
-      this.unavailable.set(false);
+      this.setLive(true);
     } catch {
       this.group = null;
-      this.connectedState.set(false);
-      this.unavailable.set(true);
+      this.setLive(false);
       this.presenceState.set([]);
     }
   }
@@ -119,8 +116,7 @@ export class CreativeHubService {
     connection.onreconnected(() => void this.rejoin(connection));
     connection.onclose(() => {
       if (this.connection === connection) {
-        this.connectedState.set(false);
-        this.unavailable.set(true);
+        this.setLive(false);
       }
     });
     return connection;
@@ -134,8 +130,7 @@ export class CreativeHubService {
     try {
       return await this.session.freshAccessToken();
     } catch (error) {
-      this.connectedState.set(false);
-      this.unavailable.set(true);
+      this.setLive(false);
       void this.connection?.stop().catch(() => undefined);
       throw error;
     }
@@ -149,12 +144,16 @@ export class CreativeHubService {
     }
     try {
       this.presenceState.set(await this.invokeJoin(connection, group));
-      this.connectedState.set(true);
-      this.unavailable.set(false);
+      this.setLive(true);
     } catch {
-      this.connectedState.set(false);
-      this.unavailable.set(true);
+      this.setLive(false);
     }
+  }
+
+  /** Keeps the two flags in step: a live connection is not unavailable, and a lost one is. */
+  private setLive(live: boolean): void {
+    this.connectedState.set(live);
+    this.unavailable.set(!live);
   }
 
   private invokeJoin(connection: HubConnection, group: Group): Promise<string[]> {
