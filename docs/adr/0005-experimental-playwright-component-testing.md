@@ -1,0 +1,3 @@
+# Experimental Playwright component testing
+
+Angular component specs move from Vitest and jsdom to Playwright component tests, because they run in a real browser. Logic specs (the store, `rebase`, the API client, the hub client, the session store, the interceptor, the guards) stay on Vitest. Playwright component testing is experimental and Angular support may be third-party, so the version is pinned. We use the official Angular package if it works with our Angular version, and the `@sand4rt` fork if not. If the tooling breaks on an Angular upgrade, the fallback is to put the affected components back on Vitest. A component's Vitest spec is deleted only after its Playwright test covers the same cases.

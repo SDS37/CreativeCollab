@@ -1,0 +1,3 @@
+# Stay on minimal APIs
+
+The API keeps minimal-API endpoint groups (`MapCreativeEndpoints`, and a new `MapAuthEndpoints`) instead of moving to MVC controllers. Controllers are not wrong, and both are supported. Microsoft recommends minimal APIs as the default for new projects. Here there are a handful of endpoints, validation already runs as an endpoint filter, and results map to HTTP in one place, so a move would rewrite working code and its tests for no new behaviour. Revisit if the endpoint count grows a lot or the filter pipeline gets complex enough that convention-based structure pays for itself.

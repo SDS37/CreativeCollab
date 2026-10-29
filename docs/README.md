@@ -8,6 +8,7 @@ Read in this order if you are new. Open one file if you are about to change that
 |---|---|
 | [Architecture](architecture.md) | What runs today, and what each part is |
 | [Definition of Done](DoD.md) | When the app is complete, and which boxes the code already checks |
+| [Evolution](evolution.md) | v1 (Display name) vs v2 (JWT accounts), side by side |
 | [Plan](../PLAN.md) | The agreed build order and the rules for each step |
 | [Architecture decision records](architecture-decision-records.md) | Choices already made, with the files that hold them |
 | [Commits](commits.md) | How a change is committed |

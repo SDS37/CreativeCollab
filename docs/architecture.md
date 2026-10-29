@@ -1,5 +1,7 @@
 # Architecture
 
+> **v2 in progress.** The text below is the v1 system, which still runs: a self-declared Display name in localStorage. [ADR 0003](adr/0003-authenticated-collaborators-with-jwt.md) replaces it with JWT accounts, and this page changes as each slice merges. See [evolution](evolution.md) for v1 vs v2, and [archive/v1](archive/v1/architecture.md) for the frozen v1 copy.
+
 CreativeCollab is one API and one Angular app. The API owns the Creative. The browser owns the Draft. A save sends the Version the Collaborator loaded. The API accepts it or returns a Conflict.
 
 The diagrams below are the system that runs today. The rules under them are the ones the code follows. [PLAN.md](../PLAN.md) records why those rules were chosen.
