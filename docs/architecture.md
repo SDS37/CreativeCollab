@@ -90,18 +90,20 @@ A `CreativeUpdated` event for this Creative reaches every open edit page, includ
 
 | Piece | Where | Behaviour |
 |---|---|---|
-| Host | `backend/CreativeCollab.Api/Program.cs` | Wires TimeProvider, the DbContext, the image-check client, the repository, the service, and FluentValidation. In Development only, applies migrations and seeds |
+| Host | `backend/CreativeCollab.Api/Program.cs` | Wires TimeProvider, the DbContext, Identity, JWT bearer validation, the rate limiter, the image-check client, the repository, the service, and FluentValidation. In Development only, applies migrations and seeds. In every environment, creates the first Admin when `Admin:*` is configured |
 | HTTP | `Endpoints/CreativeEndpoints.cs` | `GET /api/creatives`, `GET /api/creatives/{id}`, `POST /api/creatives`, `PUT /api/creatives/{id}` |
 | Rules | `Services/CreativeService.cs` | Creates a Creative at Version 1. Update checks the supplied Version, increments it, stamps `updatedAt` from TimeProvider, records the Display name. A stale Version, or a store that rejects the compare-and-swap, is a Conflict carrying the latest Creative |
 | Store | `Data/EfCreativeRepository.cs`, `Data/CreativeDbContext.cs` | EF Core 10 on SQLite. The connection string `ConnectionStrings:Creatives` defaults to `Data Source=creativecollab.db` (gitignored). Version is a concurrency token, so a save that loses a race raises `DbUpdateConcurrencyException`, which the repository reports as not updated and the service turns into the same Conflict. `updatedAt` is stored as UTC ticks so it sorts. Scoped lifetime |
 | Hub | `Hubs/CreativeHub.cs`, `Hubs/PresenceTracker.cs` | `/hubs/creatives`. `JoinCreative(id, userName)` returns the Display names present (one per connection, sorted) and sends `UserJoined` to the others in group `creative-{id}`. `LeaveCreative(id)` and a dropped connection send `UserLeft` to the others. A blank name is a `HubException`. The tracker is a singleton keyed by connection id with no scoped dependencies. Single instance, no backplane: ADR 0002 |
 | Broadcast | `Services/CreativeService.cs` | After a successful update the service sends `CreativeUpdated` (the full Creative) to the group through `IHubContext<CreativeHub>`, sender included. A failed push is logged and does not fail the save. Create does not broadcast |
 | Image check | `Services/ImageUrlValidator.cs`, `Services/PublicAddress.cs` | Typed client from `IHttpClientFactory` (pooled handler, no redirects, 3 s timeout from `ImageValidation:Timeout`). Runs on create and on update only when the image URL is new or changed, after the Version check. Resolves the host, refuses any non-public address, sends HEAD, then a one-byte ranged GET if HEAD is not successful. Only `image/*` passes. Every failure is a 400 on `imageUrl`. DNS rebinding is not fully mitigated: the host is resolved again when the client connects |
+| Accounts | `Endpoints/AuthEndpoints.cs`, `Auth/` | `POST /api/auth/register` (email, password, Display name; 201, role Editor), `POST /api/auth/login`, `POST /api/auth/refresh`, `POST /api/auth/logout`, and `GET /api/auth/me` (the claims of the caller). ASP.NET Core Identity runs on `CreativeDbContext`; `RefreshTokens` sits beside it. Roles Viewer, Editor and Admin are seeded by the migration. The first Admin comes from `Admin:Email`, `Admin:Password`, `Admin:DisplayName` and is created once. Password: 12 characters minimum, no composition rules. Five failed sign-ins lock the account for 15 minutes (423 with a clear message); every other failure is one generic 401. Register, login and refresh are rate limited per client address and endpoint (`RateLimiting:Auth`, default 10 a minute, 429). The Creative endpoints and the hub do not require sign-in yet |
+| Tokens | `Auth/TokenService.cs`, `Auth/JwtBearerSetup.cs`, `Auth/SessionService.cs` | The access token is an HS256 JWT valid 15 minutes with claims `sub`, `name`, `role`, `jti`. Validation pins HS256 and checks issuer, audience and lifetime with 30 seconds of skew. The key is `Jwt:Key` (at least 32 bytes): user-secrets in development, `Jwt__Key` in production, never appsettings. The API refuses to start without it. The refresh token is opaque, stored as a SHA-256 hash, and rotated on every use. Presenting a used or revoked token revokes its family. It travels in the `refresh_token` cookie: HttpOnly, Secure, SameSite=Strict, path `/api/auth`. Logout revokes the family. Roles are read again on refresh |
 | Errors | `Infrastructure/GlobalExceptionHandler.cs` | An unhandled exception is logged and answered as a 500 `ProblemDetails` with a generic title and no detail, in every environment. Request-binding errors such as malformed JSON keep their 4xx |
 | CORS | `Program.cs`, `Cors:AllowedOrigins` in `appsettings.json` | Default policy for `http://localhost:4200` with credentials. Any other origin gets no CORS headers |
 | Migrations and seed | `Data/Migrations/`, `Data/DatabaseInitializer.cs` | Development only: migrate on startup, then add three Creatives with empty `updatedBy` if the table is empty |
 | Validation | `Validation/` | Create and update share one rule set; update also requires Version >= 1. Empty required fields, max lengths, and a non-http(s) image URL return 400 `ValidationProblemDetails` |
-| Tests | `backend/CreativeCollab.Api.Tests` | xUnit and `WebApplicationFactory` on in-memory SQLite with the real migrations. A fake TimeProvider controls time. A save interceptor stages a genuine race. A file database and two hosts prove a restart |
+| Tests | `backend/CreativeCollab.Api.Tests` | xUnit and `WebApplicationFactory` on in-memory SQLite with the real migrations. A fake TimeProvider controls time. Auth tests sign in real accounts and use the real tokens, with no bypass; the signing key is test configuration, not appsettings. A save interceptor stages a genuine race. A file database and two hosts prove a restart |
 
 A stale update returns 409 `ProblemDetails` with the latest Creative in `current`. The Angular app in `frontend/` is tested against mocked HTTP and a fake hub.
 
@@ -122,7 +124,7 @@ Endpoints stay thin. The rules live in the service, the store, and the hub clien
 | Live updates | Hub `/hubs/creatives`. `JoinCreative`, `LeaveCreative`. Events `CreativeUpdated`, `UserJoined`, `UserLeft`. The list page is not live |
 | Presence | Singleton `ConcurrentDictionary` keyed by connection id. Lost on restart. One server instance. See [ADR 0002](adr/0002-single-instance-in-memory-presence.md) |
 | Image | Only when `imageUrl` changes. `image/*` only. Three-second timeout. No redirects. Loopback, private, and link-local addresses are rejected. Failure is 400. DNS rebinding is not fully closed |
-| Identity | Display name from the client. Trusted, not authenticated. Required on create and update |
+| Identity | Accounts and tokens exist ([ADR 0003](adr/0003-authenticated-collaborators-with-jwt.md)): an Identity account, an HS256 access token, a rotated refresh cookie. The Creative endpoints and the hub still take the Display name from the client, trusted and not authenticated, until they require sign-in |
 | CORS | `http://localhost:4200` with credentials, because SignalR needs it. The Angular app calls the API directly |
 | Frontend | Angular 22, standalone, Signals, OnPush. Screen state lives in `CreativeSignalStore`. Presentational components take `input()` and `output()` only. A dirty form is never overwritten by `CreativeUpdated` |
 
@@ -218,6 +220,10 @@ No second backend project. The test project is the only sibling of the API.
 | Invalid create body | 400 `ValidationProblemDetails` |
 | Stale Version | 409, body includes `current` |
 | Image URL that is not a public image | 400 on `imageUrl` |
+| Wrong email or password, bad refresh token | 401, one generic message |
+| Account locked after 5 failed sign-ins | 423 |
+| Too many register, login or refresh requests | 429 |
+| Invalid registration (short password, taken or invalid email, no Display name) | 400 `ValidationProblemDetails` |
 | Unexpected exception | 500 ProblemDetails with no internals |
 
 There is no delete.

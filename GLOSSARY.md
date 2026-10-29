@@ -40,6 +40,10 @@ _Avoid_: Overwrite, force save, merge
 Anyone using the app, identified only by a Display name. Viewers count as Collaborators, not just those typing.
 _Avoid_: User, editor
 
+**Account**:
+A registered identity with an email, a password, a Display name and one role (Viewer, Editor or Admin). The API signs an Account in and issues its tokens. Registration gives the Editor role.
+_Avoid_: Profile, login
+
 **Display name**:
 The self-declared, unauthenticated name a Collaborator gives. It is trusted and not unique. It is recorded on a Creative as who last updated it, and it is empty only for seeded Creatives.
 _Avoid_: Username, login

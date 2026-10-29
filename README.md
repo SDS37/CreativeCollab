@@ -15,6 +15,14 @@ dotnet test backend/CreativeCollab.slnx
 ASPNETCORE_ENVIRONMENT=Development dotnet run --project backend/CreativeCollab.Api
 ```
 
+The API needs a signing key of at least 32 bytes and will not start without it. In development keep it in user-secrets, and set `Jwt__Key` in production:
+
+```bash
+dotnet user-secrets set "Jwt:Key" "$(openssl rand -base64 48)" --project backend/CreativeCollab.Api
+```
+
+To create the first Admin, also set `Admin:Email`, `Admin:Password` (12 characters or more) and optionally `Admin:DisplayName` the same way. The Playwright run supplies a throwaway key itself.
+
 It listens on `http://localhost:5114`. That address has no page: the list of Creatives is `http://localhost:5114/api/creatives`. The app to open in a browser is `http://localhost:4200/`. `dotnet run` with the default launch profile is already Development. Without Development there is no database and no seed. Seed runs only when the Creatives table is empty.
 
 **Angular app** (calls the API directly; CORS allows `http://localhost:4200`, configurable via `Cors:AllowedOrigins`):
