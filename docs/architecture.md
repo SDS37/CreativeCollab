@@ -1,6 +1,6 @@
 # Architecture
 
-> **v2 in progress.** The text below is the v1 system, which still runs: a self-declared Display name in localStorage. [ADR 0003](adr/0003-authenticated-collaborators-with-jwt.md) replaces it with JWT accounts, and this page changes as each slice merges. The API already enforces sign-in and roles, so the Angular app described below no longer works against it until the frontend slice lands. See [evolution](evolution.md) for v1 vs v2, and [archive/v1](archive/v1/architecture.md) for the frozen v1 copy.
+> **v2 almost done.** The API and the Angular app both run on JWT accounts and roles ([ADR 0003](adr/0003-authenticated-collaborators-with-jwt.md)). What remains is slice #20: the Playwright suite in `e2e/` still drives the v1 Display name flow and has not been moved to two real accounts, and the live connection does not yet renew its token after a long drop before it reconnects. Remove this note when #20 lands. See [evolution](evolution.md) for v1 vs v2, and [archive/v1](archive/v1/architecture.md) for the frozen v1 copy.
 
 CreativeCollab is one API and one Angular app. The API owns the Creative. The browser owns the Draft. A save sends the Version the Collaborator loaded. The API accepts it or returns a Conflict.
 
@@ -16,14 +16,14 @@ flowchart LR
   API["API\n.NET 10\nlocalhost:5114"]
   DB[("SQLite\ncreativecollab.db")]
 
-  Browser -->|"HTTP\n/api/creatives"| API
+  Browser -->|"HTTP\n/api/creatives, /api/auth"| API
   Browser -->|"SignalR\n/hubs/creatives"| API
   API --> DB
 ```
 
 | Part | What it is |
 |---|---|
-| Browser | One Collaborator's Angular app. It keeps the Draft, the Display name (v1, until the frontend slice), and the open SignalR connection. A second tab is a second browser in this picture, and Presence counts it separately |
+| Browser | One Collaborator's Angular app. It keeps the Draft, the signed-in session (the access token, in memory only), and the open SignalR connection. A second tab is a second browser in this picture, and Presence counts it separately |
 | API | The only process that accepts a save, decides a Conflict, checks an image URL, and tells other open sessions what happened |
 | SQLite | The Creative rows. `creativecollab.db` sits next to the API project and is gitignored. Version is the concurrency token. Development migrates and, when the table is empty, seeds three Creatives |
 
@@ -126,15 +126,16 @@ Endpoints stay thin. The rules live in the service, the store, and the hub clien
 | Presence | Singleton `ConcurrentDictionary` keyed by connection id. Lost on restart. One server instance. See [ADR 0002](adr/0002-single-instance-in-memory-presence.md) |
 | Image | Only when `imageUrl` changes. `image/*` only. Three-second timeout. No redirects. Loopback, private, and link-local addresses are rejected. Failure is 400. DNS rebinding is not fully closed |
 | Identity | See [ADR 0003](adr/0003-authenticated-collaborators-with-jwt.md). Every API and hub call requires a valid access token except register, login and refresh. `updatedBy` and Presence names come from the token's `name` claim on the server. The client cannot supply or override them. Older `updatedBy` values stay as plain text with no link to an account |
-| Roles | Viewer reads, Editor creates and updates, Admin also changes roles. The API enforces them with policies; the UI will only mirror them |
+| Roles | Viewer reads, Editor creates and updates, Admin also changes roles. The API enforces them with policies; the UI only mirrors them (guards, a hidden New Creative link, a read-only form) |
 | CORS | `http://localhost:4200` with credentials, because SignalR needs it. The Angular app calls the API directly |
-| Frontend | Angular 22, standalone, Signals, OnPush. Screen state lives in `CreativeSignalStore`. Presentational components take `input()` and `output()` only. A dirty form is never overwritten by `CreativeUpdated` |
+| Frontend | Angular 22, standalone, Signals, OnPush. Screen state lives in `CreativeSignalStore`; who is signed in lives in `Session`. Presentational components take `input()` and `output()` only. A dirty form is never overwritten by `CreativeUpdated` |
+| Session | The access token is held in a signal only, never in localStorage or sessionStorage, so a reload starts signed out and one silent refresh on load restores the session from the refresh cookie. The browser never sends a name: the API reads it from the token. The UI reads the name and roles from the token for display only; guards and hidden buttons are UX, the API decides |
 
 ## Frontend today
 
-`frontend/` is an Angular 22 app (standalone, Signals). Screen state is an NgRx signal store (`@ngrx/signals`), not a Redux store and not a service. Angular 22 makes OnPush the default, so no component sets it. Logic specs and the edit page spec run on Vitest through `ng test`, with HTTP mocked by `HttpTestingController`, so no API is needed. The other components and the list page are tested in a real browser with Playwright component tests (`*.ct.ts`, `@sand4rt/experimental-ct-angular`, [ADR 0005](adr/0005-experimental-playwright-component-testing.md)); the list page answers HTTP with `page.route`. Playwright in `e2e/` drives two browsers against the running API. The API is called directly at `http://localhost:5114` (`core/api-config.ts`).
+`frontend/` is an Angular 22 app (standalone, Signals). Screen state is an NgRx signal store (`@ngrx/signals`), not a Redux store and not a service. Angular 22 makes OnPush the default, so no component sets it. Logic specs (session, interceptor, guards, store, hub client, API client, app wiring) and the edit page spec run on Vitest through `ng test`, with HTTP mocked by `HttpTestingController`, so no API is needed. The other components, the list page and the login and register screens are tested in a real browser with Playwright component tests (`*.ct.ts`, `@sand4rt/experimental-ct-angular`, [ADR 0005](adr/0005-experimental-playwright-component-testing.md)); the pages answer HTTP with `page.route`. Playwright in `e2e/` drives two browsers against the running API. The API is called directly at `http://localhost:5114` (`core/api-config.ts`).
 
-Routes: `/creatives` (list), `/creatives/new`, and `/creatives/:id` (the same edit page). The page is the controller. The store, the API client, and the hub client are the model. The components under them are views: they take inputs and emit outputs, and they do not call the API.
+Routes: `/login`, `/register`, `/creatives` (list), `/creatives/new`, and `/creatives/:id` (the same edit page). `authGuard` protects the list and `/creatives/:id`; `roleGuard('Editor')` protects `/creatives/new`. A signed-out visitor goes to `/login?returnUrl=...` and returns there after signing in. A Viewer who opens `/creatives/new` is sent to the list; one who opens a Creative sees it read-only, with live updates and Presence. The page is the controller. The store, the API client, and the hub client are the model. The components under them are views: they take inputs and emit outputs, and they do not call the API.
 
 ```mermaid
 flowchart TB
@@ -144,7 +145,7 @@ flowchart TB
     Banner["conflict-banner"]
     Bar["presence-bar"]
     Notice["remote-update-notice"]
-    Prompt["display-name-prompt"]
+    Login["login-page, register-page"]
   end
   subgraph pages [Pages]
     ListPage["CreativeListPage"]
@@ -154,7 +155,9 @@ flowchart TB
     Store["CreativeSignalStore"]
     Http["CreativesApi"]
     HubSvc["CreativeHubService"]
-    Name["DisplayName"]
+    Session["Session"]
+    Interceptor["authInterceptor"]
+    Guards["authGuard, roleGuard"]
   end
 
   ListPage --> List
@@ -165,7 +168,12 @@ flowchart TB
   EditPage --> Notice
   EditPage --> Store
   EditPage --> HubSvc
-  Prompt --> Name
+  Login --> Session
+  Guards --> Session
+  Interceptor --> Session
+  Http --> Interceptor
+  HubSvc --> Session
+  EditPage --> Session
   Store --> Http
 ```
 
@@ -174,9 +182,12 @@ flowchart TB
 | CreativeListPage | Loads the list and navigates to a Creative. It does not join the hub |
 | CreativeEditPage | Loads one Creative or starts a new one, joins its group, and decides what the views are allowed to show |
 | CreativeSignalStore | An NgRx signal store for the list, the selected Creative, loading, saving, errors, the Conflict, and a remote update that arrived while the form was dirty |
-| CreativesApi | HTTP for the four endpoints. It attaches the Display name and, on update, the loaded Version |
-| CreativeHubService | The SignalR connection. `presence` is who has this Creative open. `updated` is `CreativeUpdated` |
-| DisplayName | The name in localStorage. The prompt is the view; this service is the memory |
+| CreativesApi | HTTP for the four endpoints. It sends the loaded Version on update and no name |
+| CreativeHubService | The SignalR connection, authorized with the in-memory token. `presence` is who has this Creative open. `updated` is `CreativeUpdated` |
+| Session | The signed-in Collaborator: access token in memory, name and roles read from it, sign in, register, silent refresh, sign out |
+| authInterceptor | Adds the bearer token to API requests, renews once on a 401 and retries once |
+| authGuard, roleGuard | Keep a signed-out visitor, or a Viewer on an Editor page, off a route. UX only |
+| login-page, register-page | The sign-in and registration screens. Register signs in afterwards, because the API does not |
 | creative-form | The Draft. It emits field changes and resets only when handed a different Creative |
 | conflict-banner | Load latest, or Keep my edits |
 | presence-bar | The sentence of Display names. Empty means the bar renders nothing |
@@ -191,13 +202,15 @@ cd frontend && npm run test:ct              # Playwright component tests
 
 | Piece | Where | Behaviour |
 |---|---|---|
-| `DisplayName` | `core/display-name.ts` | The Collaborator's Display name in localStorage. Trusted, not authenticated. The shell shows a prompt until it is set and lets it be changed |
-| `CreativesApi` | `core/creatives-api.ts` | One method per endpoint. Adds the Display name to create and update, and the loaded Version to update. An empty image URL is omitted |
-| `CreativeSignalStore` | `core/creative-signal-store.ts` | `signalStore` state: `creatives`, `selected`, `loading`, `saving`, `error`, `conflict`, `remoteUpdate`. `receiveUpdate(creative, formIsDirty)` ignores other Creatives and Versions not newer than the selected, pending or Conflict copy, ignores my own echo while a save is in flight, adopts the update when the form is clean, and otherwise keeps it as `remoteUpdate` without touching the form. A save result never moves `selected` backwards. A 409 with `current` sets `conflict` (not `error`) and leaves `selected` as the Version the Collaborator loaded. `loadLatest` adopts `conflict`; `keepMyEdits` Rebases and saves with `current.version`. Turns HTTP failures into network, not-found, validation (field messages) or server errors. A newer load cancels an older one |
-| `CreativeListPage`, `CreativeEditPage` | `creatives/` | Containers. The edit page serves `/creatives/new` and `/creatives/:id`. They show loading, error with retry, and the form |
-| `CreativeHubService` | `core/creative-hub.ts` | Wraps the SignalR connection (built by an injectable factory so tests use a fake). `join(id, name)` invokes `JoinCreative` and exposes `presence` (one name per session; `UserJoined` adds one, `UserLeft` removes one). `updated` streams `CreativeUpdated`. It rejoins after a reconnect, `unavailable` is set when the connection fails, and `dispose` leaves the group and stops the connection |
+| `Session` | `core/session.ts` | Holds the access token in a signal, never in web storage. `name`, `roles`, `isSignedIn` and `canEdit` are read from the token's claims (unverified, for display). `hasRole` treats the roles as a ladder (Admin may do what an Editor may). `signIn`, `register` (create the account, then sign in), `restore` (one refresh on load, never fails), `refresh` (concurrent callers share one request; a refusal clears the session) and `signOut` (logout on the server, then clear; clears even when the server is unreachable). Login, refresh and logout use `withCredentials` for the refresh cookie. Failures become an `AuthError` carrying the API's message (the generic 401, the 423 lockout) or field messages from a 400 |
+| `authInterceptor` | `core/auth-interceptor.ts` | A functional `HttpInterceptorFn`. Adds `Authorization: Bearer` only to requests to `API_ORIGIN`, and never to login, register or refresh (which answer 401 for their own reasons). A 401 renews through `Session.refresh` (shared by concurrent requests, skipped when another request already renewed) and retries the request once with the new token. If renewal fails, or the retry is a 401 again, it clears the session and navigates to `/login?returnUrl=` |
+| `authGuard`, `roleGuard` | `core/guards.ts` | `canActivate` functions. `authGuard` needs a signed-in session. `roleGuard(role)` needs that role or a higher one: signed out goes to login, signed in without the role goes to the list. The app initializer in `app.config.ts` restores the session before the first route is guarded |
+| `CreativesApi` | `core/creatives-api.ts` | One method per endpoint. Adds the loaded Version to update and no name; the API takes it from the token. An empty image URL is omitted |
+| `CreativeSignalStore` | `core/creative-signal-store.ts` | `signalStore` state: `creatives`, `selected`, `loading`, `saving`, `error`, `conflict`, `remoteUpdate`. `receiveUpdate(creative, formIsDirty)` ignores other Creatives and Versions not newer than the selected, pending or Conflict copy, ignores my own echo (`updatedBy` equals the account name) while a save is in flight, adopts the update when the form is clean, and otherwise keeps it as `remoteUpdate` without touching the form. A save result never moves `selected` backwards. A 409 with `current` sets `conflict` (not `error`) and leaves `selected` as the Version the Collaborator loaded. `loadLatest` adopts `conflict`; `keepMyEdits` Rebases and saves with `current.version`. Turns HTTP failures into network, not-found, forbidden (403), validation (field messages) or server errors. A newer load cancels an older one |
+| `CreativeListPage`, `CreativeEditPage` | `creatives/` | Containers. The edit page serves `/creatives/new` and `/creatives/:id`. They show loading, error with retry, and the form. A Collaborator who cannot edit gets no New Creative link and a read-only form with no Save |
+| `CreativeHubService` | `core/creative-hub.ts` | Wraps the SignalR connection (built by an injectable factory so tests use a fake; the real one reads the token from `Session` through `accessTokenFactory` on every connect and reconnect). `join(id)` invokes `JoinCreative` with the id only and exposes `presence` (one account name per session; `UserJoined` adds one, `UserLeft` removes one). `updated` streams `CreativeUpdated`. It rejoins after a reconnect, `unavailable` is set when the connection fails, and `dispose` leaves the group and stops the connection |
 | `Rebase` | `core/rebase.ts` | Pure function: fields where the Draft differs from the loaded Creative keep the Draft value, all others take the latest. An empty and an absent image URL are equal |
-| `creative-list`, `creative-form`, `conflict-banner`, `presence-bar`, `remote-update-notice`, `display-name-prompt` | `creatives/`, `display-name-prompt/` | Presentational: `input()` and `output()` only. The form emits its Draft as it changes and resets only when handed a different Creative |
+| `creative-list`, `creative-form`, `conflict-banner`, `presence-bar`, `remote-update-notice` | `creatives/` | Presentational: `input()` and `output()` only. The form emits its Draft as it changes and resets only when handed a different Creative; with `readOnly` its fields are disabled and it has no Save |
 
 On a Conflict the Draft stays in the form and the banner names who saved (`current.updatedBy`). It offers Load latest and Keep my edits, with no merge or diff UI.
 
@@ -212,7 +225,7 @@ While the form has a Draft, a `CreativeUpdated` event shows a non-blocking notic
 | `Data/` | Persist and query Creatives | Validate input or broadcast |
 | `Hubs/` | Group membership and Presence | Save a Creative |
 | `Validation/` | Shape of a request | Decide a Conflict |
-| `frontend/` | Draft, Conflict UI, hub client | Invent a second Version rule |
+| `frontend/` | Draft, Conflict UI, hub client, session | Invent a second Version rule, keep a token in web storage, send a name |
 
 No second backend project. The test project is the only sibling of the API.
 

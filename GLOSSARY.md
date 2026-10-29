@@ -44,6 +44,10 @@ _Avoid_: User, editor
 A registered identity with an email, a password, a Display name and one role (Viewer, Editor or Admin). The API signs an Account in and issues its tokens. Registration gives the Editor role.
 _Avoid_: Profile, login
 
+**Session**:
+A Collaborator's signed-in state in one browser tab. The short-lived access token lives in memory only, so a reload starts without one and the app renews it from the refresh cookie. Signing out ends it on the server too. Guards and hidden buttons follow the Session's role for convenience; the API is what enforces roles.
+_Avoid_: Login, cookie
+
 **Display name**:
 The name on a Collaborator's Account, attested by the server from the signed token. It is not unique and the client cannot set or override it per request. It is recorded on a Creative as who last updated it and shown in Presence. Older Creatives keep whatever text was typed under the first design, with no link to an Account, and seeded Creatives have none.
 _Avoid_: Username, login
