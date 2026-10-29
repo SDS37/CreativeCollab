@@ -1,6 +1,8 @@
 import { Component, computed, inject, signal } from '@angular/core';
+import { toSignal } from '@angular/core/rxjs-interop';
 import { NonNullableFormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { map } from 'rxjs';
 import { AuthError, Session } from '../../core/session';
 
 /** Where to go after sign-in: the page the Collaborator wanted, if it is inside the app. */
@@ -44,11 +46,12 @@ export class SignInPage {
   });
   protected readonly submitting = signal(false);
   protected readonly error = signal<string | null>(null);
-  private readonly valid = signal(false);
+  /** Form validity is not a signal, so it is read again on every status change. */
+  private readonly valid = toSignal(this.form.statusChanges.pipe(map(() => this.form.valid)), {
+    initialValue: false,
+  });
 
   protected readonly canSubmit = computed(() => this.valid() && !this.submitting());
-
-  private readonly track = this.form.statusChanges.subscribe(() => this.valid.set(this.form.valid));
 
   protected async submit(): Promise<void> {
     if (!this.form.valid || this.submitting()) {
