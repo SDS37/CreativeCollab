@@ -1,3 +1,6 @@
+using System.Security.Claims;
+using CreativeCollab.Api.Auth;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
 namespace CreativeCollab.Api.Hubs;
@@ -6,6 +9,7 @@ namespace CreativeCollab.Api.Hubs;
 /// Real-time channel for one Creative at a time per join. It tracks Presence and relays announcements;
 /// saving a Creative is the service's job, never the hub's.
 /// </summary>
+[Authorize(Policy = Policies.CanRead)]
 public sealed class CreativeHub(PresenceTracker presence) : Hub
 {
     public static class Events
@@ -17,11 +21,12 @@ public sealed class CreativeHub(PresenceTracker presence) : Hub
 
     public static string GroupName(Guid creativeId) => $"creative-{creativeId}";
 
-    /// <summary>Joins the Creative's group and returns who is present now, including the caller.</summary>
-    public async Task<string[]> JoinCreative(Guid creativeId, string userName)
+    /// <summary>Joins the Creative's group as the signed-in account and returns who is present now, including the caller.</summary>
+    public async Task<string[]> JoinCreative(Guid creativeId)
     {
-        if (string.IsNullOrWhiteSpace(userName))
-            throw new HubException("A display name is required.");
+        // The name is the account's, from the signed token. The client has no say in it.
+        var userName = Context.User?.FindFirstValue("name")
+            ?? throw new HubException("The token has no name.");
 
         var group = GroupName(creativeId);
         var added = presence.Join(Context.ConnectionId, creativeId, userName);

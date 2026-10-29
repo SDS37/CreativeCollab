@@ -15,6 +15,7 @@ public sealed class JwtBearerSetup(IOptions<JwtOptions> jwt, TimeProvider time) 
     {
         var settings = jwt.Value;
         options.MapInboundClaims = false; // keep sub, name, role as issued
+        options.Events = new JwtBearerEvents { OnMessageReceived = AcceptQueryTokenOnHubPaths };
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
@@ -38,6 +39,21 @@ public sealed class JwtBearerSetup(IOptions<JwtOptions> jwt, TimeProvider time) 
             NameClaimType = "name",
             RoleClaimType = "role",
         };
+    }
+
+    public const string HubPathPrefix = "/hubs";
+
+    /// <summary>
+    /// Browsers cannot set headers on a WebSocket or event-stream connection, so the hub takes the token as the
+    /// <c>access_token</c> query value. Only on hub paths: a token in a URL elsewhere would end up in logs for no reason.
+    /// </summary>
+    private static Task AcceptQueryTokenOnHubPaths(MessageReceivedContext context)
+    {
+        if (context.Request.Path.StartsWithSegments(HubPathPrefix)
+            && context.Request.Query["access_token"] is { Count: > 0 } token
+            && !string.IsNullOrEmpty(token[0]))
+            context.Token = token[0];
+        return Task.CompletedTask;
     }
 
     public void Configure(JwtBearerOptions options) => Configure(Options.DefaultName, options);

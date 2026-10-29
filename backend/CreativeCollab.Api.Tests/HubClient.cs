@@ -15,13 +15,14 @@ public sealed class HubClient : IAsyncDisposable
     private readonly Channel<string> _left = Channel.CreateUnbounded<string>();
     private readonly Channel<JsonElement> _updated = Channel.CreateUnbounded<JsonElement>();
 
-    private HubClient(ApiFactory host, string? origin)
+    private HubClient(ApiFactory host, string? accessToken, string? origin)
     {
         _connection = new HubConnectionBuilder()
             .WithUrl(new Uri(host.Server.BaseAddress, "/hubs/creatives"), options =>
             {
                 options.HttpMessageHandlerFactory = _ => host.Server.CreateHandler();
                 options.Transports = HttpTransportType.LongPolling;
+                if (accessToken is not null) options.AccessTokenProvider = () => Task.FromResult<string?>(accessToken);
                 if (origin is not null) options.Headers["Origin"] = origin;
             })
             .Build();
@@ -30,15 +31,15 @@ public sealed class HubClient : IAsyncDisposable
         _connection.On<JsonElement>("CreativeUpdated", creative => _updated.Writer.TryWrite(creative));
     }
 
-    public static async Task<HubClient> ConnectAsync(ApiFactory host, string? origin = null)
+    public static async Task<HubClient> ConnectAsync(ApiFactory host, string? accessToken, string? origin = null)
     {
-        var client = new HubClient(host, origin);
+        var client = new HubClient(host, accessToken, origin);
         await client._connection.StartAsync();
         return client;
     }
 
-    public async Task<string[]> JoinAsync(Guid creativeId, string userName) =>
-        await _connection.InvokeAsync<string[]>("JoinCreative", creativeId, userName);
+    public async Task<string[]> JoinAsync(Guid creativeId) =>
+        await _connection.InvokeAsync<string[]>("JoinCreative", creativeId);
 
     public Task LeaveAsync(Guid creativeId) => _connection.InvokeAsync("LeaveCreative", creativeId);
 
