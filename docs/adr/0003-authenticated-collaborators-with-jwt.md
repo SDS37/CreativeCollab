@@ -8,5 +8,6 @@ Collaborators sign in with an account, and the API trusts a signed JWT instead o
 - **Hosting:** the frontend and the API stay same-site. Unrelated domains would need `SameSite=None` and an anti-CSRF token, so that change needs a new ADR.
 - **Identity on records:** `UpdatedBy` and Presence names come from token claims on the server. Older `UpdatedBy` values stay as plain text.
 - **Hub:** `CreativeHub` requires auth. The token arrives as `access_token` on `/hubs/*` only. A connection stays authorized until it drops, and reconnecting authenticates again.
+- **Lockout:** a locked account answers 423 with a clear message, so the Collaborator knows when to retry. This reveals that the account exists. We accept that trade-off. A wrong password and an unknown email still return the same generic 401.
 
 We rejected an external identity provider (an outside dependency for a single-instance app), a hand-rolled user table (more security-sensitive code to own), and a token in localStorage (readable by any script on the page).
