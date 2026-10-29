@@ -19,7 +19,7 @@ public static class AuthEndpoints
                 _ => throw new InvalidOperationException("Unhandled register result."),
             }).AddEndpointFilter<ValidationFilter<RegisterRequest>>().RequireRateLimiting(AuthRateLimitOptions.PolicyName).AllowAnonymous();
 
-        group.MapPost("/login", async (LoginRequest request, AccountService accounts, SessionService sessions, HttpContext http) =>
+        group.MapPost("/sign-in", async (SignInRequest request, AccountService accounts, SessionService sessions, HttpContext http) =>
         {
             switch (await accounts.SignInAsync(request))
             {

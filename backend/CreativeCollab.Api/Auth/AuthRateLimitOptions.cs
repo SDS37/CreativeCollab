@@ -1,6 +1,6 @@
 namespace CreativeCollab.Api.Auth;
 
-/// <summary>Limit on register, login and refresh, counted per client address and per endpoint.</summary>
+/// <summary>Limit on register, sign-in and refresh, counted per client address and per endpoint.</summary>
 public sealed class AuthRateLimitOptions
 {
     public const string PolicyName = "auth";

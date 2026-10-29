@@ -25,7 +25,7 @@ public sealed class AuthTests : IDisposable
     {
         var client = NewClient();
 
-        var session = await client.SignInAsync("ana@example.com", displayName: "Ana Lopez");
+        var session = await client.RegisterAndSignInAsync("ana@example.com", displayName: "Ana Lopez");
 
         Assert.Equal(HttpStatusCode.OK, (await client.ListCreativesAsync(session.AccessToken)).StatusCode);
         var claims = AuthClient.ClaimsOf(session.AccessToken);
@@ -41,8 +41,8 @@ public sealed class AuthTests : IDisposable
         var client = NewClient();
         await client.RegisterAsync("ana@example.com");
 
-        var wrongPassword = await client.LoginAsync("ana@example.com", "not the right password");
-        var unknownEmail = await client.LoginAsync("nobody@example.com");
+        var wrongPassword = await client.SignInAsync("ana@example.com", "not the right password");
+        var unknownEmail = await client.SignInAsync("nobody@example.com");
 
         Assert.Equal(HttpStatusCode.Unauthorized, wrongPassword.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, unknownEmail.StatusCode);
@@ -64,10 +64,10 @@ public sealed class AuthTests : IDisposable
         await client.RegisterAsync("ana@example.com");
 
         counter.Verifications = 0;
-        await client.LoginAsync("ana@example.com", "not the right password");
+        await client.SignInAsync("ana@example.com", "not the right password");
         var forWrongPassword = counter.Verifications;
         counter.Verifications = 0;
-        await client.LoginAsync("nobody@example.com", "not the right password");
+        await client.SignInAsync("nobody@example.com", "not the right password");
 
         Assert.Equal(1, forWrongPassword);
         Assert.Equal(forWrongPassword, counter.Verifications);
@@ -94,9 +94,9 @@ public sealed class AuthTests : IDisposable
         var client = NewClient();
         await client.RegisterAsync("ana@example.com");
         for (var i = 0; i < 5; i++)
-            Assert.Equal(HttpStatusCode.Unauthorized, (await client.LoginAsync("ana@example.com", "wrong password here")).StatusCode);
+            Assert.Equal(HttpStatusCode.Unauthorized, (await client.SignInAsync("ana@example.com", "wrong password here")).StatusCode);
 
-        var locked = await client.LoginAsync("ana@example.com");
+        var locked = await client.SignInAsync("ana@example.com");
 
         Assert.Equal(HttpStatusCode.Locked, locked.StatusCode);
         Assert.Contains("try again", await locked.Content.ReadAsStringAsync());
@@ -108,12 +108,12 @@ public sealed class AuthTests : IDisposable
     {
         var client = NewClient();
         await client.RegisterAsync("ana@example.com");
-        for (var i = 0; i < 4; i++) await client.LoginAsync("ana@example.com", "wrong password here");
-        Assert.Equal(HttpStatusCode.OK, (await client.LoginAsync("ana@example.com")).StatusCode);
+        for (var i = 0; i < 4; i++) await client.SignInAsync("ana@example.com", "wrong password here");
+        Assert.Equal(HttpStatusCode.OK, (await client.SignInAsync("ana@example.com")).StatusCode);
 
-        for (var i = 0; i < 4; i++) await client.LoginAsync("ana@example.com", "wrong password here");
+        for (var i = 0; i < 4; i++) await client.SignInAsync("ana@example.com", "wrong password here");
 
-        Assert.Equal(HttpStatusCode.OK, (await client.LoginAsync("ana@example.com")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.SignInAsync("ana@example.com")).StatusCode);
     }
 
     [Fact]
@@ -166,7 +166,7 @@ public sealed class AuthTests : IDisposable
     }
 
     [Fact]
-    public async Task Register_login_and_refresh_are_rate_limited_each_on_its_own()
+    public async Task Register_sign_in_and_refresh_are_rate_limited_each_on_its_own()
     {
         var host = new ApiFactory(s => s.Configure<AuthRateLimitOptions>(o => o.PermitLimit = 3));
         _hosts.Add(host);
@@ -174,23 +174,23 @@ public sealed class AuthTests : IDisposable
 
         for (var i = 0; i < 3; i++)
         {
-            Assert.NotEqual(HttpStatusCode.TooManyRequests, (await client.LoginAsync("ana@example.com", "wrong password here")).StatusCode);
+            Assert.NotEqual(HttpStatusCode.TooManyRequests, (await client.SignInAsync("ana@example.com", "wrong password here")).StatusCode);
             Assert.NotEqual(HttpStatusCode.TooManyRequests, (await client.RegisterAsync($"user{i}@example.com")).StatusCode);
             Assert.NotEqual(HttpStatusCode.TooManyRequests, (await client.RefreshAsync("nope")).StatusCode);
         }
 
-        Assert.Equal(HttpStatusCode.TooManyRequests, (await client.LoginAsync("ana@example.com", "wrong password here")).StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, (await client.SignInAsync("ana@example.com", "wrong password here")).StatusCode);
         Assert.Equal(HttpStatusCode.TooManyRequests, (await client.RegisterAsync("late@example.com")).StatusCode);
         Assert.Equal(HttpStatusCode.TooManyRequests, (await client.RefreshAsync("nope")).StatusCode);
     }
 
     [Fact]
-    public async Task Changing_the_case_or_adding_a_slash_to_the_login_path_does_not_get_a_new_rate_limit_bucket()
+    public async Task Changing_the_case_or_adding_a_slash_to_the_sign_in_path_does_not_get_a_new_rate_limit_bucket()
     {
         var host = new ApiFactory(s => s.Configure<AuthRateLimitOptions>(o => o.PermitLimit = 3));
         _hosts.Add(host);
         var client = host.CreateClient();
-        string[] paths = ["/api/auth/login", "/API/AUTH/LOGIN", "/Api/Auth/Login", "/api/auth/login/"];
+        string[] paths = ["/api/auth/sign-in", "/API/AUTH/SIGN-IN", "/Api/Auth/Sign-In", "/api/auth/sign-in/"];
 
         var statuses = new List<HttpStatusCode>();
         foreach (var path in paths.Concat(paths))

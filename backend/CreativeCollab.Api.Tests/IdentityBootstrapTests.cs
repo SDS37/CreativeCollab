@@ -40,9 +40,9 @@ public sealed class IdentityBootstrapTests : IDisposable
 
     private static async Task<JsonElement> ClaimsAsync(HttpClient client, string email, string password)
     {
-        var login = await client.LoginAsync(email, password);
-        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
-        var session = await AuthClient.ReadSessionAsync(login);
+        var signIn = await client.SignInAsync(email, password);
+        Assert.Equal(HttpStatusCode.OK, signIn.StatusCode);
+        var session = await AuthClient.ReadSessionAsync(signIn);
         Assert.Equal(HttpStatusCode.OK, (await client.ListCreativesAsync(session.AccessToken)).StatusCode);
         return AuthClient.ClaimsOf(session.AccessToken);
     }
@@ -76,7 +76,7 @@ public sealed class IdentityBootstrapTests : IDisposable
         await using var host = StartHost(configureAdmin: false);
         var client = host.CreateClient();
 
-        Assert.Equal(HttpStatusCode.Unauthorized, (await client.LoginAsync(AdminEmail, AdminPassword)).StatusCode);
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.SignInAsync(AdminEmail, AdminPassword)).StatusCode);
         await client.RegisterAsync("ana@example.com");
         Assert.Equal("Editor", (await ClaimsAsync(client, "ana@example.com", AuthClient.Password)).GetProperty("role").GetString());
     }

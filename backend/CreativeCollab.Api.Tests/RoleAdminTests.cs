@@ -57,7 +57,7 @@ public sealed class RoleAdminTests : IDisposable
     }
 
     private static async Task<string> AdminTokenAsync(HttpClient client) =>
-        (await AuthClient.ReadSessionAsync(await client.LoginAsync(ApiFactory.AdminEmail))).AccessToken;
+        (await AuthClient.ReadSessionAsync(await client.SignInAsync(ApiFactory.AdminEmail))).AccessToken;
 
     private static Task<string?> RoleOfAsync(HttpClient client, string token) =>
         Task.FromResult(AuthClient.ClaimsOf(token).GetProperty("role").GetString());
@@ -75,7 +75,7 @@ public sealed class RoleAdminTests : IDisposable
     public async Task Changing_a_role_as_an_editor_is_403()
     {
         var client = _host.CreateClient();
-        var editor = await client.SignInAsync(NewEmail());
+        var editor = await client.RegisterAndSignInAsync(NewEmail());
         var id = await RegisterAsync(client, NewEmail());
 
         Assert.Equal(HttpStatusCode.Forbidden, (await ChangeRoleAsync(client, id, "Viewer", editor.AccessToken)).StatusCode);
@@ -87,7 +87,7 @@ public sealed class RoleAdminTests : IDisposable
         var client = _host.CreateClient();
         var email = NewEmail();
         var id = await RegisterAsync(client, email);
-        var session = await AuthClient.ReadSessionAsync(await client.LoginAsync(email));
+        var session = await AuthClient.ReadSessionAsync(await client.SignInAsync(email));
 
         var changed = await ChangeRoleAsync(client, id, "Viewer", await AdminTokenAsync(client));
 
@@ -121,7 +121,7 @@ public sealed class RoleAdminTests : IDisposable
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         Assert.Contains("last Admin", await response.Content.ReadAsStringAsync());
-        var renewed = await AuthClient.ReadSessionAsync(await client.LoginAsync(ApiFactory.AdminEmail));
+        var renewed = await AuthClient.ReadSessionAsync(await client.SignInAsync(ApiFactory.AdminEmail));
         Assert.Equal("Admin", await RoleOfAsync(client, renewed.AccessToken));
     }
 
@@ -164,7 +164,7 @@ public sealed class RoleAdminTests : IDisposable
         _failure.Armed = false;
 
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
-        var session = await AuthClient.ReadSessionAsync(await client.LoginAsync(email));
+        var session = await AuthClient.ReadSessionAsync(await client.SignInAsync(email));
         Assert.Equal("Editor", await RoleOfAsync(client, session.AccessToken));
     }
 }

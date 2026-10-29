@@ -52,12 +52,12 @@ describe('app wiring', () => {
   });
 
   describe('routes', () => {
-    it('sends a signed-out visitor to login and remembers the page', async () => {
+    it('sends a signed-out visitor to sign-in and remembers the page', async () => {
       await started();
 
       await TestBed.inject(Router).navigateByUrl('/creatives/3');
 
-      expect(TestBed.inject(Router).url).toBe('/login?returnUrl=%2Fcreatives%2F3');
+      expect(TestBed.inject(Router).url).toBe('/sign-in?returnUrl=%2Fcreatives%2F3');
     });
 
     it('lets a Viewer open the list and a Creative but not the create page', async () => {
@@ -80,14 +80,14 @@ describe('app wiring', () => {
       expect(router.url).toBe('/creatives/new');
     });
 
-    it('keeps login and register open to everyone', async () => {
+    it('keeps sign-in and register open to everyone', async () => {
       await started();
       const router = TestBed.inject(Router);
 
       await router.navigateByUrl('/register');
       expect(router.url).toBe('/register');
-      await router.navigateByUrl('/login');
-      expect(router.url).toBe('/login');
+      await router.navigateByUrl('/sign-in');
+      expect(router.url).toBe('/sign-in');
     });
   });
 });

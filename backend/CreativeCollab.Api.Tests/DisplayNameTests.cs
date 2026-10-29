@@ -76,7 +76,7 @@ public sealed class DisplayNameTests : IDisposable
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.True((await ErrorsAsync(response)).TryGetProperty("displayName", out _));
-        Assert.Equal(HttpStatusCode.Unauthorized, (await client.LoginAsync(email)).StatusCode); // no account was made
+        Assert.Equal(HttpStatusCode.Unauthorized, (await client.SignInAsync(email)).StatusCode); // no account was made
     }
 
     [Fact]

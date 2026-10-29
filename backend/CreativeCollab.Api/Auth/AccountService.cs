@@ -53,7 +53,7 @@ public sealed class AccountService(UserManager<AppUser> users, IPasswordHasher<A
         return new RegisterResult.Registered(account);
     }
 
-    public async Task<SignInResult> SignInAsync(LoginRequest request)
+    public async Task<SignInResult> SignInAsync(SignInRequest request)
     {
         var account = await users.FindByEmailAsync(request.Email ?? "");
         if (account is not null && await users.IsLockedOutAsync(account))

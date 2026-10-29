@@ -30,7 +30,7 @@ describe('Session', () => {
 
   async function signedIn(name = 'Ada', role: string | string[] = 'Editor'): Promise<void> {
     const done = session.signIn('ada@example.com', 'a long enough password');
-    http.expectOne(`${AUTH}/login`).flush(token(name, role));
+    http.expectOne(`${AUTH}/sign-in`).flush(token(name, role));
     await done;
   }
 
@@ -43,7 +43,7 @@ describe('Session', () => {
   describe('signIn', () => {
     it('posts the credentials with cookies and exposes the name and role from the token', async () => {
       const done = session.signIn('ada@example.com', 'a long enough password');
-      const req = http.expectOne(`${AUTH}/login`);
+      const req = http.expectOne(`${AUTH}/sign-in`);
       expect(req.request.method).toBe('POST');
       expect(req.request.withCredentials).toBe(true);
       expect(req.request.body).toEqual({ email: 'ada@example.com', password: 'a long enough password' });
@@ -71,7 +71,7 @@ describe('Session', () => {
     it('shows the generic message for a wrong email or password and stays signed out', async () => {
       const done = session.signIn('ada@example.com', 'wrong');
       http
-        .expectOne(`${AUTH}/login`)
+        .expectOne(`${AUTH}/sign-in`)
         .flush({ title: 'Unauthorized', detail: 'Invalid email or password.' }, { status: 401, statusText: 'Unauthorized' });
 
       await expect(done).rejects.toMatchObject({ message: 'Invalid email or password.' });
@@ -81,7 +81,7 @@ describe('Session', () => {
     it('shows the lockout message for a locked account', async () => {
       const done = session.signIn('ada@example.com', 'wrong');
       http
-        .expectOne(`${AUTH}/login`)
+        .expectOne(`${AUTH}/sign-in`)
         .flush({ detail: 'This account is locked after too many failed sign-ins. Please try again in 15 minutes.' }, { status: 423, statusText: 'Locked' });
 
       await expect(done).rejects.toMatchObject({
@@ -91,14 +91,14 @@ describe('Session', () => {
 
     it('says the server cannot be reached when there is no response', async () => {
       const done = session.signIn('ada@example.com', 'x');
-      http.expectOne(`${AUTH}/login`).error(new ProgressEvent('error'));
+      http.expectOne(`${AUTH}/sign-in`).error(new ProgressEvent('error'));
 
       await expect(done).rejects.toMatchObject({ message: expect.stringContaining('Cannot reach the server') });
     });
 
     it('says to slow down when rate limited', async () => {
       const done = session.signIn('ada@example.com', 'x');
-      http.expectOne(`${AUTH}/login`).flush(null, { status: 429, statusText: 'Too Many Requests' });
+      http.expectOne(`${AUTH}/sign-in`).flush(null, { status: 429, statusText: 'Too Many Requests' });
 
       await expect(done).rejects.toMatchObject({ message: expect.stringContaining('Too many attempts') });
     });
@@ -143,7 +143,7 @@ describe('Session', () => {
       expect(session.isSignedIn()).toBe(false);
       create.flush({ id: '1' }, { status: 201, statusText: 'Created' });
       await Promise.resolve();
-      http.expectOne(`${AUTH}/login`).flush(token('Ada'));
+      http.expectOne(`${AUTH}/sign-in`).flush(token('Ada'));
       await done;
 
       expect(session.name()).toBe('Ada');

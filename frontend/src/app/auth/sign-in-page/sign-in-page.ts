@@ -12,15 +12,15 @@ function destination(router: Router): string {
 }
 
 @Component({
-  selector: 'app-login-page',
+  selector: 'app-sign-in-page',
   imports: [ReactiveFormsModule, RouterLink],
   template: `
     <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
       <h1>Sign in</h1>
-      <label for="login-email">Email</label>
-      <input id="login-email" type="email" formControlName="email" autocomplete="username" />
-      <label for="login-password">Password</label>
-      <input id="login-password" type="password" formControlName="password" autocomplete="current-password" />
+      <label for="sign-in-email">Email</label>
+      <input id="sign-in-email" type="email" formControlName="email" autocomplete="username" />
+      <label for="sign-in-password">Password</label>
+      <input id="sign-in-password" type="password" formControlName="password" autocomplete="current-password" />
       @if (error(); as message) {
         <p role="alert" class="error">{{ message }}</p>
       }
@@ -34,7 +34,7 @@ function destination(router: Router): string {
     .error { color: #b00020; margin: 0; }
   `,
 })
-export class LoginPage {
+export class SignInPage {
   private readonly session = inject(Session);
   private readonly router = inject(Router);
 

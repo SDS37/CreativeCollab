@@ -29,7 +29,7 @@ import { AuthError, Session } from '../../core/session';
         <p role="alert" class="error">{{ message }}</p>
       }
       <button type="submit" [disabled]="!canSubmit()">{{ submitting() ? 'Creating…' : 'Create account' }}</button>
-      <p>Already have an account? <a routerLink="/login">Sign in</a></p>
+      <p>Already have an account? <a routerLink="/sign-in">Sign in</a></p>
     </form>
   `,
   styles: `

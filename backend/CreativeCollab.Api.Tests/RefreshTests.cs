@@ -23,7 +23,7 @@ public sealed class RefreshTests : IDisposable
     [Fact]
     public async Task The_refresh_cookie_is_http_only_secure_same_site_strict_and_scoped_to_the_auth_path()
     {
-        var session = await NewClient().SignInAsync("ana@example.com");
+        var session = await NewClient().RegisterAndSignInAsync("ana@example.com");
 
         var cookie = session.SetCookieHeader.ToLowerInvariant();
 
@@ -38,7 +38,7 @@ public sealed class RefreshTests : IDisposable
     public async Task Refreshing_returns_a_working_access_token_and_a_different_refresh_token()
     {
         var client = NewClient();
-        var first = await client.SignInAsync("ana@example.com", displayName: "Ana Lopez");
+        var first = await client.RegisterAndSignInAsync("ana@example.com", displayName: "Ana Lopez");
 
         var response = await client.RefreshAsync(first.RefreshCookie);
 
@@ -53,7 +53,7 @@ public sealed class RefreshTests : IDisposable
     public async Task A_rotated_refresh_token_can_be_followed_through_the_chain()
     {
         var client = NewClient();
-        var session = await client.SignInAsync("ana@example.com");
+        var session = await client.RegisterAndSignInAsync("ana@example.com");
 
         for (var i = 0; i < 3; i++)
         {
@@ -67,7 +67,7 @@ public sealed class RefreshTests : IDisposable
     public async Task Reusing_a_rotated_refresh_token_is_refused_and_revokes_the_whole_family()
     {
         var client = NewClient();
-        var first = await client.SignInAsync("ana@example.com");
+        var first = await client.RegisterAndSignInAsync("ana@example.com");
         var second = await AuthClient.ReadSessionAsync(await client.RefreshAsync(first.RefreshCookie));
 
         var reuse = await client.RefreshAsync(first.RefreshCookie);
@@ -81,8 +81,8 @@ public sealed class RefreshTests : IDisposable
     public async Task Reuse_by_one_account_does_not_revoke_another_accounts_session()
     {
         var client = NewClient();
-        var ana = await client.SignInAsync("ana@example.com");
-        var bo = await client.SignInAsync("bo@example.com", displayName: "Bo");
+        var ana = await client.RegisterAndSignInAsync("ana@example.com");
+        var bo = await client.RegisterAndSignInAsync("bo@example.com", displayName: "Bo");
         await client.RefreshAsync(ana.RefreshCookie);
         await client.RefreshAsync(ana.RefreshCookie);
 
@@ -106,7 +106,7 @@ public sealed class RefreshTests : IDisposable
     public async Task An_expired_refresh_token_is_refused()
     {
         var client = NewClient();
-        var session = await client.SignInAsync("ana@example.com");
+        var session = await client.RegisterAndSignInAsync("ana@example.com");
 
         _time.Advance(TimeSpan.FromDays(15));
 
@@ -117,7 +117,7 @@ public sealed class RefreshTests : IDisposable
     public async Task Signing_out_revokes_the_session_on_the_server_so_a_copied_cookie_cannot_revive_it()
     {
         var client = NewClient();
-        var session = await client.SignInAsync("ana@example.com");
+        var session = await client.RegisterAndSignInAsync("ana@example.com");
 
         var logout = await client.LogoutAsync(session.RefreshCookie, session.AccessToken);
 
@@ -128,7 +128,7 @@ public sealed class RefreshTests : IDisposable
     [Fact]
     public async Task Signing_out_without_a_session_is_harmless()
     {
-        var session = await NewClient().SignInAsync("ana@example.com");
+        var session = await NewClient().RegisterAndSignInAsync("ana@example.com");
 
         var logout = await NewClient().LogoutAsync(cookie: null, session.AccessToken);
 
@@ -139,7 +139,7 @@ public sealed class RefreshTests : IDisposable
     public async Task Signing_out_works_from_the_refresh_cookie_alone_with_no_access_token()
     {
         var client = NewClient();
-        var session = await client.SignInAsync("ana@example.com");
+        var session = await client.RegisterAndSignInAsync("ana@example.com");
 
         var logout = await client.LogoutAsync(session.RefreshCookie);
 
@@ -151,7 +151,7 @@ public sealed class RefreshTests : IDisposable
     public async Task Signing_out_with_an_expired_access_token_still_revokes_the_session()
     {
         var client = NewClient();
-        var session = await client.SignInAsync("ana@example.com");
+        var session = await client.RegisterAndSignInAsync("ana@example.com");
         _time.Advance(TimeSpan.FromHours(1)); // the access token (15 minutes) has expired
 
         var logout = await client.LogoutAsync(session.RefreshCookie, session.AccessToken);
@@ -164,7 +164,7 @@ public sealed class RefreshTests : IDisposable
     public async Task Signing_out_revokes_the_whole_family_including_a_rotated_token()
     {
         var client = NewClient();
-        var first = await client.SignInAsync("ana@example.com");
+        var first = await client.RegisterAndSignInAsync("ana@example.com");
         var second = await AuthClient.ReadSessionAsync(await client.RefreshAsync(first.RefreshCookie));
 
         await client.LogoutAsync(second.RefreshCookie);

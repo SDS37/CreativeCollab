@@ -17,7 +17,7 @@ describe('App shell', () => {
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
-        provideRouter([{ path: 'login', children: [] }]),
+        provideRouter([{ path: 'sign-in', children: [] }]),
       ],
     });
     http = TestBed.inject(HttpTestingController);
@@ -44,7 +44,7 @@ describe('App shell', () => {
     expect(el().querySelector('app-display-name-prompt')).toBeNull();
   });
 
-  it('signs out on the server, clears the session and goes to login', async () => {
+  it('signs out on the server, clears the session and goes to sign-in', async () => {
     create();
     await signInAs('Ada');
     await fixture.whenStable();
@@ -56,7 +56,7 @@ describe('App shell', () => {
     await fixture.whenStable();
 
     expect(TestBed.inject(Session).isSignedIn()).toBe(false);
-    expect(TestBed.inject(Router).url).toBe('/login');
+    expect(TestBed.inject(Router).url).toBe('/sign-in');
     expect(el().querySelector('header.shell')).toBeNull();
   });
 });

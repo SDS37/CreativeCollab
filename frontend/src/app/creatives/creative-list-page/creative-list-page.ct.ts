@@ -1,6 +1,6 @@
 import { expect, test } from '@sand4rt/experimental-ct-angular';
 import type { Page } from 'playwright/test';
-import { answer, reply } from '../../auth/ct-api';
+import { answer, reply } from '../../auth/stub-auth-api';
 import { fakeAccessToken } from '../../core/session.testing';
 import { Creative } from '../../core/creative.model';
 import { CreativeListPage } from './creative-list-page';
@@ -64,7 +64,7 @@ test('shows an error with a retry that reloads the list', async ({ mount, page }
 });
 
 async function signInAs(page: Page, role: string): Promise<void> {
-  await answer(page, 'login', (route) =>
+  await answer(page, 'sign-in', (route) =>
     reply(route, 200, { accessToken: fakeAccessToken('Ada', role), expiresIn: 900 }),
   );
   await page.evaluate(() => window.__pwSession?.signIn('ada@example.com', 'a long enough password'));

@@ -14,6 +14,6 @@ export class App {
 
   protected async signOut(): Promise<void> {
     await this.session.signOut();
-    await this.router.navigate(['/login']);
+    await this.router.navigate(['/sign-in']);
   }
 }

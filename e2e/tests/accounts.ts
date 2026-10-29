@@ -42,9 +42,9 @@ export async function setRole(
   account: Account,
   role: 'Viewer' | 'Editor' | 'Admin',
 ): Promise<void> {
-  const login = await request.post(`${API}/auth/login`, { data: { email: ADMIN.email, password: ADMIN.password } });
-  expect(login.ok(), 'the seeded Admin can sign in').toBe(true);
-  const { accessToken } = (await login.json()) as { accessToken: string };
+  const response = await request.post(`${API}/auth/sign-in`, { data: { email: ADMIN.email, password: ADMIN.password } });
+  expect(response.ok(), 'the seeded Admin can sign in').toBe(true);
+  const { accessToken } = (await response.json()) as { accessToken: string };
   const changed = await request.put(`${API}/admin/users/${account.id}/role`, {
     data: { role },
     headers: { Authorization: `Bearer ${accessToken}` },
@@ -52,7 +52,7 @@ export async function setRole(
   expect(changed.status()).toBe(204);
 }
 
-/** Signs in through the login screen, so the role in the token is the one the account has now. */
+/** Signs in through the sign-in screen, so the role in the token is the one the account has now. */
 export async function signIn(page: Page, account: Account, returnTo = '/'): Promise<void> {
   await page.goto(returnTo);
   await page.getByLabel('Email').fill(account.email);

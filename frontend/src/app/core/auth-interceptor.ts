@@ -9,7 +9,7 @@ import { Session } from './session';
  * These answer 401 for their own reasons (wrong password, no cookie) or need no token (logout works from the
  * refresh cookie alone), so they get no bearer and are never renewed or retried.
  */
-const ANONYMOUS = ['login', 'register', 'refresh', 'logout'].map((name) => `${AUTH_URL}/${name}`);
+const ANONYMOUS = ['sign-in', 'register', 'refresh', 'logout'].map((name) => `${AUTH_URL}/${name}`);
 
 /** Whether the URL, resolved the way the browser would, points at the API's origin. A prefix check is fooled by `http://localhost:5114@evil.com`. */
 const isApiRequest = (url: string): boolean => {
@@ -26,7 +26,7 @@ const withBearer = (request: HttpRequest<unknown>, token: string | null) =>
 /**
  * Adds the access token to requests to the API and nothing else. A 401 renews the session once
  * (concurrent requests share the renewal) and retries the request once. If that fails the
- * Collaborator is sent to login.
+ * Collaborator is sent to sign-in.
  */
 export const authInterceptor: HttpInterceptorFn = (request, next) => {
   if (!isApiRequest(request.url) || ANONYMOUS.includes(request.url)) {
@@ -42,8 +42,8 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
     );
   const fail = (error: unknown): Observable<never> => {
     session.clear();
-    if (!router.url.startsWith('/login')) {
-      void router.navigate(['/login'], { queryParams: { returnUrl: router.url } });
+    if (!router.url.startsWith('/sign-in')) {
+      void router.navigate(['/sign-in'], { queryParams: { returnUrl: router.url } });
     }
     return throwError(() => error);
   };

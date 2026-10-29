@@ -1,7 +1,7 @@
 import { expect, test } from '@sand4rt/experimental-ct-angular';
 import type { Locator } from 'playwright/test';
 import { fakeAccessToken } from '../../core/session.testing';
-import { answer, reply } from '../ct-api';
+import { answer, reply } from '../stub-auth-api';
 import { RegisterPage } from './register-page';
 
 async function fill(component: Locator, password = 'a long enough password') {
@@ -29,7 +29,7 @@ test('registers, signs in because register does not, and opens the list', async 
     registered = route.request().postDataJSON();
     return reply(route, 201, { id: '1', email: 'ada@example.com', displayName: 'Ada Lovelace' });
   });
-  await answer(page, 'login', (route) => {
+  await answer(page, 'sign-in', (route) => {
     loggedIn = route.request().postDataJSON();
     return reply(route, 200, { accessToken: fakeAccessToken('Ada Lovelace'), expiresIn: 900 });
   });
@@ -80,5 +80,5 @@ test('says so when the server cannot be reached', async ({ mount, page }) => {
 test('links back to sign in', async ({ mount }) => {
   const component = await mount(RegisterPage);
 
-  await expect(component.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/login');
+  await expect(component.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/sign-in');
 });

@@ -17,7 +17,7 @@ describe('route guards', () => {
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([
-          { path: 'login', children: [] },
+          { path: 'sign-in', children: [] },
           { path: 'creatives', canActivate: [authGuard], children: [] },
           { path: 'creatives/new', canActivate: [authGuard, roleGuard('Editor')], children: [] },
         ]),
@@ -30,21 +30,21 @@ describe('route guards', () => {
     const session = TestBed.inject(Session);
     const done = session.signIn('a@example.com', 'a long enough password');
     TestBed.inject(HttpTestingController)
-      .expectOne(`${AUTH}/login`)
+      .expectOne(`${AUTH}/sign-in`)
       .flush({ accessToken: fakeAccessToken('Ada', role), expiresIn: 900 });
     await done;
   }
 
-  it('sends a signed-out Collaborator to login and remembers the page they wanted', async () => {
+  it('sends a signed-out Collaborator to sign-in and remembers the page they wanted', async () => {
     await router.navigateByUrl('/creatives');
 
-    expect(router.url).toBe('/login?returnUrl=%2Fcreatives');
+    expect(router.url).toBe('/sign-in?returnUrl=%2Fcreatives');
   });
 
   it('keeps the whole wanted URL, query included', async () => {
     await router.navigateByUrl('/creatives?x=1');
 
-    expect(router.url).toBe('/login?returnUrl=%2Fcreatives%3Fx%3D1');
+    expect(router.url).toBe('/sign-in?returnUrl=%2Fcreatives%3Fx%3D1');
   });
 
   it('lets a signed-in Collaborator in', async () => {
@@ -55,10 +55,10 @@ describe('route guards', () => {
     expect(router.url).toBe('/creatives');
   });
 
-  it('sends a signed-out Collaborator to login from a role-guarded page too', async () => {
+  it('sends a signed-out Collaborator to sign-in from a role-guarded page too', async () => {
     await router.navigateByUrl('/creatives/new');
 
-    expect(router.url).toBe('/login?returnUrl=%2Fcreatives%2Fnew');
+    expect(router.url).toBe('/sign-in?returnUrl=%2Fcreatives%2Fnew');
   });
 
   it('blocks a Viewer from a page that needs an Editor and sends them to the list', async () => {

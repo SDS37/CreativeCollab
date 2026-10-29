@@ -106,12 +106,12 @@ public sealed class EndpointEnforcementTests : IDisposable
     }
 
     [Fact]
-    public async Task Register_login_refresh_and_logout_stay_open_to_anonymous_callers()
+    public async Task Register_sign_in_refresh_and_logout_stay_open_to_anonymous_callers()
     {
         var client = _host.CreateClient();
 
         Assert.NotEqual(HttpStatusCode.Unauthorized, (await client.RegisterAsync("open@example.com")).StatusCode);
-        Assert.NotEqual(HttpStatusCode.Forbidden, (await client.LoginAsync("open@example.com")).StatusCode);
+        Assert.NotEqual(HttpStatusCode.Forbidden, (await client.SignInAsync("open@example.com")).StatusCode);
         // No cookie: the refusal is the refresh endpoint's own generic 401, not an authentication wall.
         var refresh = await client.RefreshAsync(null);
         Assert.Equal(HttpStatusCode.Unauthorized, refresh.StatusCode);

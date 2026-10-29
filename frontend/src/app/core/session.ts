@@ -70,7 +70,7 @@ export class Session {
   async signIn(email: string, password: string): Promise<void> {
     try {
       const response = await firstValueFrom(
-        this.http.post<unknown>(`${AUTH_URL}/login`, { email, password }, { withCredentials: true }),
+        this.http.post<unknown>(`${AUTH_URL}/sign-in`, { email, password }, { withCredentials: true }),
       );
       this.token.set(accessTokenResponse.parse(response).accessToken);
     } catch (error) {

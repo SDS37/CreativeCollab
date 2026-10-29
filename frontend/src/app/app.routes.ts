@@ -6,7 +6,7 @@ const editPage = () =>
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'creatives' },
-  { path: 'login', loadComponent: () => import('./auth/login-page/login-page').then((m) => m.LoginPage) },
+  { path: 'sign-in', loadComponent: () => import('./auth/sign-in-page/sign-in-page').then((m) => m.SignInPage) },
   { path: 'register', loadComponent: () => import('./auth/register-page/register-page').then((m) => m.RegisterPage) },
   {
     path: 'creatives',

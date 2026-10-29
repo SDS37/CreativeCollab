@@ -32,7 +32,7 @@ describe('authInterceptor', () => {
     router = TestBed.inject(Router);
 
     const done = session.signIn('ada@example.com', 'a long enough password');
-    controller.expectOne(`${AUTH}/login`).flush({ accessToken: first, expiresIn: 900 });
+    controller.expectOne(`${AUTH}/sign-in`).flush({ accessToken: first, expiresIn: 900 });
     await done;
   });
 
@@ -74,7 +74,7 @@ describe('authInterceptor', () => {
   });
 
   it('does not send the token to the sign-in, register or refresh endpoints', () => {
-    for (const path of ['login', 'register', 'refresh']) {
+    for (const path of ['sign-in', 'register', 'refresh']) {
       http.post(`${AUTH}/${path}`, {}).subscribe({ error: () => {} });
       expect(controller.expectOne(`${AUTH}/${path}`).request.headers.has('Authorization')).toBe(false);
     }
@@ -82,8 +82,8 @@ describe('authInterceptor', () => {
 
   it('does not try to renew when sign-in itself answers 401', () => {
     let status = 0;
-    http.post(`${AUTH}/login`, {}).subscribe({ error: (e) => (status = e.status) });
-    controller.expectOne(`${AUTH}/login`).flush({}, unauthorized);
+    http.post(`${AUTH}/sign-in`, {}).subscribe({ error: (e) => (status = e.status) });
+    controller.expectOne(`${AUTH}/sign-in`).flush({}, unauthorized);
 
     expect(status).toBe(401);
     controller.expectNone(`${AUTH}/refresh`);
@@ -143,7 +143,7 @@ describe('authInterceptor', () => {
     controller.expectNone(`${AUTH}/refresh`);
   });
 
-  it('retries only once: a second 401 clears the session and goes to login', async () => {
+  it('retries only once: a second 401 clears the session and goes to sign-in', async () => {
     let status = 0;
     http.get(API).subscribe({ error: (e) => (status = e.status) });
     controller.expectOne(API).flush({}, unauthorized);
@@ -153,10 +153,10 @@ describe('authInterceptor', () => {
     expect(status).toBe(401);
     controller.expectNone(`${AUTH}/refresh`);
     expect(session.isSignedIn()).toBe(false);
-    await vi.waitFor(() => expect(router.url).toMatch(/^\/login/));
+    await vi.waitFor(() => expect(router.url).toMatch(/^\/sign-in/));
   });
 
-  it('clears the session and goes to login, remembering the page, when renewal fails', async () => {
+  it('clears the session and goes to sign-in, remembering the page, when renewal fails', async () => {
     await router.navigateByUrl('/creatives/4');
     let status = 0;
     http.get(API).subscribe({ error: (e) => (status = e.status) });
@@ -165,7 +165,7 @@ describe('authInterceptor', () => {
 
     expect(status).toBe(401);
     expect(session.isSignedIn()).toBe(false);
-    await vi.waitFor(() => expect(router.url).toBe('/login?returnUrl=%2Fcreatives%2F4'));
+    await vi.waitFor(() => expect(router.url).toBe('/sign-in?returnUrl=%2Fcreatives%2F4'));
   });
 
   it('passes other errors through without renewing', () => {

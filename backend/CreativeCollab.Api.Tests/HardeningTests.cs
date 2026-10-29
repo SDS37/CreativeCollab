@@ -94,8 +94,8 @@ public sealed class HardeningTests : IDisposable
     {
         var host = NewHost();
         var client = host.CreateClient();
-        var expiring = await client.SignInAsync("ana@example.com");
-        var revoked = await client.SignInAsync("bo@example.com");
+        var expiring = await client.RegisterAndSignInAsync("ana@example.com");
+        var revoked = await client.RegisterAndSignInAsync("bo@example.com");
         await client.LogoutAsync(revoked.RefreshCookie);
         Assert.Equal(2, await RefreshTokenCountAsync(host));
 
@@ -111,8 +111,8 @@ public sealed class HardeningTests : IDisposable
     {
         var host = NewHost();
         var client = host.CreateClient();
-        await client.SignInAsync("ana@example.com");
-        var revoked = await client.SignInAsync("bo@example.com");
+        await client.RegisterAndSignInAsync("ana@example.com");
+        var revoked = await client.RegisterAndSignInAsync("bo@example.com");
         await client.LogoutAsync(revoked.RefreshCookie);
 
         _time.Advance(TimeSpan.FromDays(1));
@@ -126,9 +126,9 @@ public sealed class HardeningTests : IDisposable
     {
         var host = NewHost();
         var client = host.CreateClient();
-        await client.SignInAsync("ana@example.com"); // expires on day 14
+        await client.RegisterAndSignInAsync("ana@example.com"); // expires on day 14
         _time.Advance(TimeSpan.FromDays(20));
-        var bo = await client.SignInAsync("bo@example.com"); // Ana's expired 6 days ago: inside retention, kept
+        var bo = await client.RegisterAndSignInAsync("bo@example.com"); // Ana's expired 6 days ago: inside retention, kept
         Assert.Equal(2, await RefreshTokenCountAsync(host));
         _time.Advance(TimeSpan.FromDays(10)); // Ana's expired 16 days ago, Bo's token is still valid
 

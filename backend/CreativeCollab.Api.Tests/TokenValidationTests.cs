@@ -25,7 +25,7 @@ public sealed class TokenValidationTests : IDisposable
     public async Task A_token_is_accepted_inside_its_lifetime_and_refused_once_it_and_the_skew_have_passed()
     {
         var client = NewClient();
-        var session = await client.SignInAsync("ana@example.com");
+        var session = await client.RegisterAndSignInAsync("ana@example.com");
 
         _time.Advance(TimeSpan.FromMinutes(14));
         Assert.Equal(HttpStatusCode.OK, (await client.ListCreativesAsync(session.AccessToken)).StatusCode);
@@ -41,7 +41,7 @@ public sealed class TokenValidationTests : IDisposable
     public async Task A_tampered_token_is_refused()
     {
         var client = NewClient();
-        var session = await client.SignInAsync("ana@example.com");
+        var session = await client.RegisterAndSignInAsync("ana@example.com");
         var parts = session.AccessToken.Split('.');
         var payload = Encoding.UTF8.GetString(Base64UrlEncoder.DecodeBytes(parts[1])).Replace("\"Editor\"", "\"Admin\"");
         var forged = $"{parts[0]}.{Base64UrlEncoder.Encode(payload)}.{parts[2]}";
