@@ -24,12 +24,16 @@ public static class AuthEndpoints
             return Results.Created($"{BasePath}/me", new { id = user.Id, email = user.Email, displayName = user.DisplayName });
         }).AddEndpointFilter<ValidationFilter<RegisterRequest>>().RequireRateLimiting(AuthRateLimitOptions.PolicyName);
 
-        group.MapPost("/login", async (LoginRequest request, UserManager<AppUser> users, SessionService sessions, HttpContext http) =>
+        group.MapPost("/login", async (LoginRequest request, UserManager<AppUser> users, SessionService sessions, IPasswordHasher<AppUser> hasher, HttpContext http) =>
         {
             var user = await users.FindByEmailAsync(request.Email ?? "");
             if (user is not null && await users.IsLockedOutAsync(user))
                 return Results.Problem(title: "Locked", detail: "This account is locked after too many failed sign-ins. Please try again in 15 minutes.",
                     statusCode: StatusCodes.Status423Locked);
+
+            // An unknown email still pays for one password hash check, so response time does not reveal which emails have accounts.
+            if (user is null)
+                hasher.VerifyHashedPassword(new AppUser(), DummyHash(hasher), request.Password ?? "");
 
             if (user is null || !await users.CheckPasswordAsync(user, request.Password ?? ""))
             {
@@ -63,6 +67,11 @@ public static class AuthEndpoints
 
         return app;
     }
+
+    private static string? _dummyHash;
+
+    private static string DummyHash(IPasswordHasher<AppUser> hasher) =>
+        _dummyHash ??= hasher.HashPassword(new AppUser(), Guid.NewGuid().ToString("N"));
 
     public const string GenericRegistrationMessage = "Registration could not be completed with these details. Check the details and try again, or sign in.";
 

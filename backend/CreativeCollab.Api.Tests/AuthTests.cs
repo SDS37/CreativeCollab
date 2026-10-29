@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 using CreativeCollab.Api.Auth;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CreativeCollab.Api.Tests;
@@ -51,6 +52,40 @@ public sealed class AuthTests : IDisposable
         Assert.Equal(wrongBody.GetProperty("detail").GetString(), unknownBody.GetProperty("detail").GetString());
         Assert.Equal(wrongBody.GetProperty("title").GetString(), unknownBody.GetProperty("title").GetString());
         Assert.False(wrongPassword.Headers.Contains("Set-Cookie"));
+    }
+
+    [Fact]
+    public async Task An_unknown_email_costs_one_password_hash_check_like_a_wrong_password()
+    {
+        // Timing cannot be asserted reliably, so this counts the hasher work through the injected hasher instead.
+        var counter = new CountingHasher();
+        var host = new ApiFactory(s => s.AddSingleton<IPasswordHasher<AppUser>>(counter));
+        _hosts.Add(host);
+        var client = host.CreateClient();
+        await client.RegisterAsync("ana@example.com");
+
+        counter.Verifications = 0;
+        await client.LoginAsync("ana@example.com", "not the right password");
+        var forWrongPassword = counter.Verifications;
+        counter.Verifications = 0;
+        await client.LoginAsync("nobody@example.com", "not the right password");
+
+        Assert.Equal(1, forWrongPassword);
+        Assert.Equal(forWrongPassword, counter.Verifications);
+    }
+
+    private sealed class CountingHasher : IPasswordHasher<AppUser>
+    {
+        private readonly PasswordHasher<AppUser> _inner = new();
+        public int Verifications;
+
+        public string HashPassword(AppUser user, string password) => _inner.HashPassword(user, password);
+
+        public PasswordVerificationResult VerifyHashedPassword(AppUser user, string hashedPassword, string providedPassword)
+        {
+            Interlocked.Increment(ref Verifications);
+            return _inner.VerifyHashedPassword(user, hashedPassword, providedPassword);
+        }
     }
 
     [Fact]
