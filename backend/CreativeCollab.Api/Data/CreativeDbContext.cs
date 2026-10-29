@@ -17,7 +17,12 @@ public sealed class CreativeDbContext(DbContextOptions<CreativeDbContext> option
     {
         base.OnModelCreating(modelBuilder);
 
-        modelBuilder.Entity<AppUser>().Property(u => u.DisplayName).IsRequired().HasMaxLength(AppUser.DisplayNameMaxLength);
+        modelBuilder.Entity<AppUser>(e =>
+        {
+            e.Property(u => u.DisplayName).IsRequired().HasMaxLength(AppUser.DisplayNameMaxLength);
+            e.Property(u => u.NormalizedDisplayName).IsRequired().HasMaxLength(AppUser.DisplayNameMaxLength * 2);
+            e.HasIndex(u => u.NormalizedDisplayName).IsUnique();
+        });
 
         // Roles are part of the schema, so every database has them from the first migration.
         modelBuilder.Entity<IdentityRole>().HasData(AccountRoles.Names.Select(name => new IdentityRole

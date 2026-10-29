@@ -33,7 +33,7 @@ Where each reviewed pattern lives in the code. Line numbers are from the commit 
 ## Known limitations
 
 - **Presence is single-instance.** It is in process memory with no backplane. ADR 0002 records why.
-- **Display name is not unique.** It is the account's name, set at registration and attested by the server, but two accounts may share one. Presence and `updatedBy` show the name only, so two same-named accounts look alike. The first design trusted a self-declared name ([ADR 0003](docs/adr/0003-authenticated-collaborators-with-jwt.md)).
+- **Display name uniqueness is by normalized form only.** Names are unique (case-insensitive, Unicode compatibility folded, unique index) and limited to letters, digits, spaces and `. _ - '`, 2 to 40 characters. Letters from different scripts that look alike (a Cyrillic `а` for a Latin `a`) are still different names, so a lookalike is possible. Accounts that existed before the rule keep their names, except duplicates, which got a short id suffix in the migration.
 - **DNS rebinding is not fully mitigated.** The image check resolves the host once, and the HTTP client resolves it again on connect.
 - **The `no redirects` setting is configuration**, not proven by a test: the stubbed handler cannot exercise it. Tests only prove a 3xx response is rejected.
 - **Frontend and hub were tested against mocks.** The only end-to-end check done is a manual run of the HTTP contract against the running API.

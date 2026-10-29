@@ -24,13 +24,16 @@ internal static class AuthClient
     public const string Password = "correct horse battery";
     public const string CookieName = "refresh_token";
 
-    public static Task<HttpResponseMessage> RegisterAsync(this HttpClient client, string email, string password = Password, string displayName = "Ana") =>
-        client.PostAsJsonAsync("/api/auth/register", new { email, password, displayName });
+    public static Task<HttpResponseMessage> RegisterAsync(this HttpClient client, string email, string password = Password, string? displayName = null) =>
+        client.PostAsJsonAsync("/api/auth/register", new { email, password, displayName = displayName ?? UniqueName() });
+
+    /// <summary>Display names are unique, so tests that do not care about the name get a fresh one.</summary>
+    public static string UniqueName() => $"Ana {Guid.NewGuid().ToString("N")[..8]}";
 
     public static Task<HttpResponseMessage> LoginAsync(this HttpClient client, string email, string password = Password) =>
         client.PostAsJsonAsync("/api/auth/login", new { email, password });
 
-    public static async Task<Session> SignInAsync(this HttpClient client, string email, string password = Password, string displayName = "Ana")
+    public static async Task<Session> SignInAsync(this HttpClient client, string email, string password = Password, string? displayName = null)
     {
         var registered = await client.RegisterAsync(email, password, displayName);
         Assert.Equal(HttpStatusCode.Created, registered.StatusCode);
@@ -40,9 +43,9 @@ internal static class AuthClient
     }
 
     /// <summary>Signs in (registering first when asked) and makes the client send the access token from then on.</summary>
-    public static async Task<HttpClient> AuthenticateAsync(this HttpClient client, string email, bool register = true)
+    public static async Task<HttpClient> AuthenticateAsync(this HttpClient client, string email, bool register = true, string? displayName = null)
     {
-        if (register) Assert.Equal(HttpStatusCode.Created, (await client.RegisterAsync(email)).StatusCode);
+        if (register) Assert.Equal(HttpStatusCode.Created, (await client.RegisterAsync(email, displayName: displayName)).StatusCode);
         var login = await client.LoginAsync(email);
         Assert.Equal(HttpStatusCode.OK, login.StatusCode);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", (await ReadSessionAsync(login)).AccessToken);

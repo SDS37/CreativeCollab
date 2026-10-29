@@ -59,12 +59,12 @@ public sealed class HubTests : IAsyncDisposable
         var http = await _host.SignedInAsync();
         var id = await CreateCreativeAsync(http);
         var ana = await ConnectAsync("Ana");
-        var bo = await ConnectAsync("Bo");
+        var boAccount = await _host.NewAccountAsync(name: "Bo");
+        var bo = await ConnectAsync(boAccount);
         await ana.JoinAsync(id);
         await bo.JoinAsync(id);
-        var editor = await _host.SignedInAsync(name: "Bo");
 
-        var response = await editor.PutAsJsonAsync($"/api/creatives/{id}", Edit(1));
+        var response = await boAccount.Client.PutAsJsonAsync($"/api/creatives/{id}", Edit(1));
         var saved = await response.Content.ReadFromJsonAsync<JsonElement>();
 
         foreach (var client in new[] { ana, bo })

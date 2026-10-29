@@ -17,8 +17,9 @@ internal sealed record Account(HttpClient Client, Session Session, string Id, st
 internal static class TestAccounts
 {
     /// <summary>Registers an account, gives it the role through the Admin endpoint, and signs it in.</summary>
-    public static async Task<Account> NewAccountAsync(this ApiFactory host, string role = AccountRoles.Editor, string name = "Ana")
+    public static async Task<Account> NewAccountAsync(this ApiFactory host, string role = AccountRoles.Editor, string? name = null)
     {
+        name ??= AuthClient.UniqueName();
         var client = host.CreateClient();
         var email = $"{Guid.NewGuid():N}@example.com";
         var registered = await client.RegisterAsync(email, displayName: name);
@@ -49,7 +50,7 @@ internal static class TestAccounts
     }
 
     /// <summary>A client that sends the account's access token with every request.</summary>
-    public static async Task<HttpClient> SignedInAsync(this ApiFactory host, string role = AccountRoles.Editor, string name = "Ana") =>
+    public static async Task<HttpClient> SignedInAsync(this ApiFactory host, string role = AccountRoles.Editor, string? name = null) =>
         (await host.NewAccountAsync(role, name)).Client;
 
     private static async Task<Account> SignInAsync(HttpClient client, string email, string id, string name)

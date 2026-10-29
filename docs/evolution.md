@@ -7,7 +7,7 @@ How the app's identity and auth changed. v1 is frozen at git tag `v1-display-nam
 | Who is a Collaborator | Anyone who types a name | A registered account with a role |
 | Identity source | The client sends the name | The server reads token claims |
 | Where it is kept | localStorage | Access token in memory, refresh token in an httpOnly cookie |
-| Spoofing | Any client can write any `UpdatedBy` | `UpdatedBy` and Presence come from the token |
+| Spoofing | Any client can write any `UpdatedBy` | `UpdatedBy` and Presence come from the token, and a Display name is unique and plain, so it cannot imitate another |
 | API access | Open | Login required, except register, login and refresh |
 | Roles | None | Viewer, Editor, Admin, enforced by API policies |
 | Hub | Open, name passed to `JoinCreative` | `[Authorize]`, token as `access_token` on `/hubs/*` |

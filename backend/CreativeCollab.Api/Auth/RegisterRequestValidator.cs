@@ -8,6 +8,6 @@ public sealed class RegisterRequestValidator : AbstractValidator<RegisterRequest
     {
         RuleFor(x => x.Email).NotEmpty().EmailAddress();
         RuleFor(x => x.Password).NotEmpty();
-        RuleFor(x => x.DisplayName).NotEmpty().MaximumLength(AppUser.DisplayNameMaxLength);
+        RuleFor(x => x.DisplayName).NotEmpty().Must(DisplayNames.IsValid).WithMessage(DisplayNames.Rule);
     }
 }

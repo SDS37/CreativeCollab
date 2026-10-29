@@ -49,7 +49,7 @@ A Collaborator's signed-in state in one browser tab. The short-lived access toke
 _Avoid_: Login, cookie
 
 **Display name**:
-The name on a Collaborator's Account, attested by the server from the signed token. It is not unique and the client cannot set or override it per request. It is recorded on a Creative as who last updated it and shown in Presence. Older Creatives keep whatever text was typed under the first design, with no link to an Account, and seeded Creatives have none.
+The name on a Collaborator's Account, attested by the server from the signed token. It is unique (case-insensitive) and limited to letters, digits, spaces and `. _ - '`, 2 to 40 characters, so nobody can pass as another account; a taken name may be reported as taken because names are public. The client cannot set or override it per request. It is recorded on a Creative as who last updated it and shown in Presence. Older Creatives keep whatever text was typed under the first design, with no link to an Account, and seeded Creatives have none.
 _Avoid_: Username, login
 
 **Presence**:

@@ -2,6 +2,7 @@ using System.Security.Claims;
 using CreativeCollab.Api.Auth;
 using CreativeCollab.Api.Validation;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace CreativeCollab.Api.Endpoints;
 
@@ -15,8 +16,23 @@ public static class AuthEndpoints
 
         group.MapPost("/register", async (RegisterRequest request, UserManager<AppUser> users) =>
         {
-            var user = new AppUser { UserName = request.Email, Email = request.Email, DisplayName = request.DisplayName!.Trim() };
-            var created = await users.CreateAsync(user, request.Password!);
+            // Display names are public, so saying one is taken is fine (unlike an email).
+            var normalized = DisplayNames.Normalize(request.DisplayName!);
+            if (await users.Users.AnyAsync(u => u.NormalizedDisplayName == normalized))
+                return Results.ValidationProblem(DisplayNameTaken);
+
+            var user = new AppUser { UserName = request.Email, Email = request.Email, DisplayName = request.DisplayName! };
+            IdentityResult created;
+            try
+            {
+                created = await users.CreateAsync(user, request.Password!);
+            }
+            catch (DbUpdateException)
+            {
+                // Lost a race for the same name (the unique index caught it); anything else is a real failure.
+                if (!await users.Users.AnyAsync(u => u.NormalizedDisplayName == normalized)) throw;
+                return Results.ValidationProblem(DisplayNameTaken);
+            }
             if (!created.Succeeded)
                 return Results.ValidationProblem(ToProblems(created));
 
@@ -67,6 +83,11 @@ public static class AuthEndpoints
 
         return app;
     }
+
+    private static readonly Dictionary<string, string[]> DisplayNameTaken = new()
+    {
+        ["displayName"] = ["That name is taken. Please choose another."],
+    };
 
     private static string? _dummyHash;
 

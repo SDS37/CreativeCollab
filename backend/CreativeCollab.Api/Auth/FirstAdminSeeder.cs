@@ -21,7 +21,11 @@ public static class FirstAdminSeeder
         if (await users.FindByEmailAsync(email) is not null)
             return;
 
-        var admin = new AppUser { UserName = email, Email = email, DisplayName = section["DisplayName"] is { Length: > 0 } name ? name : "Admin" };
+        var displayName = section["DisplayName"] is { Length: > 0 } name ? name : "Admin";
+        if (!DisplayNames.IsValid(displayName))
+            throw new InvalidOperationException($"Admin:DisplayName is not a valid Display name. {DisplayNames.Rule}");
+
+        var admin = new AppUser { UserName = email, Email = email, DisplayName = displayName };
         var created = await users.CreateAsync(admin, password);
         if (!created.Succeeded)
             throw new InvalidOperationException(

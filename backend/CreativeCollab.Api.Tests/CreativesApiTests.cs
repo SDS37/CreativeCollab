@@ -14,7 +14,7 @@ public sealed class CreativesApiTests : IDisposable
     {
         var host = new ApiFactory(configure);
         _hosts.Add(host);
-        return await host.SignedInAsync();
+        return await host.SignedInAsync(name: "Ana");
     }
 
     public void Dispose() => _hosts.ForEach(h => h.Dispose());

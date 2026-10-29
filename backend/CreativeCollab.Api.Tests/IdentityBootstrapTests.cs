@@ -98,6 +98,52 @@ public sealed class IdentityBootstrapTests : IDisposable
         Assert.Equal(1, list.GetArrayLength()); // not seeded: the table was not empty
     }
 
+    [Fact]
+    public async Task Accounts_from_before_unique_names_upgrade_even_when_two_share_a_name()
+    {
+        var options = new DbContextOptionsBuilder<CreativeDbContext>().UseSqlite(ConnectionString).Options;
+        await using (var db = new CreativeDbContext(options))
+            db.GetService<IMigrator>().Migrate("20261029081517_AddIdentity");
+        await using (var connection = new SqliteConnection(ConnectionString))
+        {
+            await connection.OpenAsync();
+            await using var insert = connection.CreateCommand();
+            insert.CommandText = """
+                INSERT INTO AspNetUsers (Id, DisplayName, UserName, NormalizedUserName, Email, NormalizedEmail, EmailConfirmed, PasswordHash, SecurityStamp, ConcurrencyStamp, PhoneNumberConfirmed, TwoFactorEnabled, LockoutEnabled, AccessFailedCount)
+                VALUES ('11111111-aaaa', 'Ana', 'a@x.com', 'A@X.COM', 'a@x.com', 'A@X.COM', 0, 'x', 's', 'c', 0, 0, 1, 0),
+                       ('22222222-bbbb', 'ana', 'b@x.com', 'B@X.COM', 'b@x.com', 'B@X.COM', 0, 'x', 's', 'c', 0, 0, 1, 0)
+                """;
+            await insert.ExecuteNonQueryAsync();
+        }
+
+        await using var host = StartHost();
+        host.CreateClient(); // starts the host, which migrates
+
+        await using var check = new SqliteConnection(ConnectionString);
+        await check.OpenAsync();
+        await using var count = check.CreateCommand();
+        count.CommandText = "SELECT COUNT(DISTINCT NormalizedDisplayName) FROM AspNetUsers WHERE UserName IN ('a@x.com', 'b@x.com')";
+        Assert.Equal(2L, await count.ExecuteScalarAsync());
+    }
+
+    [Theory]
+    [InlineData("x")]
+    [InlineData("Admin<script>")]
+    [InlineData(" Root")]
+    public async Task A_first_admin_name_that_breaks_the_display_name_rule_stops_the_host_from_starting(string name)
+    {
+        await using var host = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
+        {
+            b.UseEnvironment("Development");
+            b.UseSetting("ConnectionStrings:Creatives", ConnectionString);
+            b.UseSetting("Admin:Email", AdminEmail);
+            b.UseSetting("Admin:Password", AdminPassword);
+            b.UseSetting("Admin:DisplayName", name);
+        });
+
+        Assert.ThrowsAny<Exception>(() => host.CreateClient());
+    }
+
     private async Task CreateDatabaseAsItWasBeforeAccountsAsync(Guid id)
     {
         var options = new DbContextOptionsBuilder<CreativeDbContext>().UseSqlite(ConnectionString).Options;

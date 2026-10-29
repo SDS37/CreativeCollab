@@ -29,7 +29,7 @@ public sealed class PersistenceTests : IDisposable
         Guid id;
         await using (var first = StartHost())
         {
-            var response = await (await first.CreateClient().AuthenticateAsync(Email)).PostAsJsonAsync("/api/creatives",
+            var response = await (await first.CreateClient().AuthenticateAsync(Email, displayName: "Ana")).PostAsJsonAsync("/api/creatives",
                 new { name = "Survivor", headline = "h", body = "b", cta = "c" });
             id = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
         }
