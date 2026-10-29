@@ -35,6 +35,8 @@ builder.Services.AddOptions<JwtOptions>()
     .Bind(builder.Configuration.GetSection("Jwt"))
     .Validate(o => Encoding.UTF8.GetByteCount(o.Key) >= JwtOptions.MinimumKeyBytes,
         $"Jwt:Key must be at least {JwtOptions.MinimumKeyBytes} bytes (256 bits). Set it with user-secrets or the Jwt__Key environment variable.")
+    .Validate(o => o.ClockSkew >= TimeSpan.Zero && o.ClockSkew <= JwtOptions.MaximumClockSkew,
+        $"Jwt:ClockSkew must be between zero and {JwtOptions.MaximumClockSkew.TotalSeconds} seconds.")
     .ValidateOnStart();
 builder.Services.AddIdentityCore<AppUser>(options =>
     {

@@ -13,6 +13,8 @@ public sealed class JwtOptions
     public int AccessTokenMinutes { get; set; } = 15;
     public int RefreshTokenDays { get; set; } = 14;
 
-    /// <summary>Allowed clock difference when checking token lifetime.</summary>
+    public static readonly TimeSpan MaximumClockSkew = TimeSpan.FromSeconds(30);
+
+    /// <summary>Allowed clock difference when checking token lifetime. The host refuses to start above <see cref="MaximumClockSkew"/>.</summary>
     public TimeSpan ClockSkew { get; set; } = TimeSpan.FromSeconds(30);
 }

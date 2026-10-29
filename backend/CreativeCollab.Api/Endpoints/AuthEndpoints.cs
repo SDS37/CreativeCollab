@@ -38,7 +38,7 @@ public static class AuthEndpoints
 
             await users.AddToRoleAsync(user, AccountRoles.Default);
             return Results.Created($"{BasePath}/me", new { id = user.Id, email = user.Email, displayName = user.DisplayName });
-        }).AddEndpointFilter<ValidationFilter<RegisterRequest>>().RequireRateLimiting(AuthRateLimitOptions.PolicyName);
+        }).AddEndpointFilter<ValidationFilter<RegisterRequest>>().RequireRateLimiting(AuthRateLimitOptions.PolicyName).AllowAnonymous();
 
         group.MapPost("/login", async (LoginRequest request, UserManager<AppUser> users, SessionService sessions, IPasswordHasher<AppUser> hasher, HttpContext http) =>
         {
@@ -59,13 +59,13 @@ public static class AuthEndpoints
 
             await users.ResetAccessFailedCountAsync(user);
             return Results.Ok(await sessions.StartAsync(user, http));
-        }).RequireRateLimiting(AuthRateLimitOptions.PolicyName);
+        }).RequireRateLimiting(AuthRateLimitOptions.PolicyName).AllowAnonymous();
 
         group.MapPost("/refresh", async (SessionService sessions, HttpContext http) =>
             await sessions.RefreshAsync(http) is { } renewed
                 ? Results.Ok(renewed)
                 : Results.Problem(title: "Unauthorized", detail: "Please sign in again.", statusCode: StatusCodes.Status401Unauthorized))
-            .RequireRateLimiting(AuthRateLimitOptions.PolicyName);
+            .RequireRateLimiting(AuthRateLimitOptions.PolicyName).AllowAnonymous();
 
         group.MapPost("/logout", async (SessionService sessions, HttpContext http) =>
         {

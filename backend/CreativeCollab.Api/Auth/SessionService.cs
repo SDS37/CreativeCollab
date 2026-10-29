@@ -13,13 +13,28 @@ public sealed class SessionService(CreativeDbContext db, TokenService tokens, Us
 {
     public const string RefreshCookieName = "refresh_token";
 
-    public Task<AccessTokenResponse> StartAsync(AppUser user, HttpContext http) =>
-        IssueAsync(user, familyId: Guid.NewGuid(), http);
+    /// <summary>Rows this long past expiry, or this long since revocation, are deleted. Opportunistic: it runs on login and refresh.</summary>
+    public static readonly TimeSpan Retention = TimeSpan.FromDays(7);
+
+    public async Task<AccessTokenResponse> StartAsync(AppUser user, HttpContext http)
+    {
+        await PurgeAsync(http.RequestAborted);
+        return await IssueAsync(user, familyId: Guid.NewGuid(), http);
+    }
+
+    private async Task PurgeAsync(CancellationToken ct)
+    {
+        var cutoff = time.GetUtcNow() - Retention;
+        await db.RefreshTokens
+            .Where(t => t.ExpiresAt < cutoff || (t.RevokedAt != null && t.RevokedAt < cutoff))
+            .ExecuteDeleteAsync(ct);
+    }
 
     /// <summary>Rotates the refresh token in the cookie. Null means the caller must sign in again.</summary>
     public async Task<AccessTokenResponse?> RefreshAsync(HttpContext http)
     {
         var ct = http.RequestAborted;
+        await PurgeAsync(ct);
         var presented = await FindAsync(http, ct);
         if (presented is null)
             return Reject(http);

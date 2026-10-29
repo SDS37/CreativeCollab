@@ -14,6 +14,9 @@ public static class Policies
 
     public static void AddCreativeCollabPolicies(this AuthorizationOptions options)
     {
+        // Anything that does not say otherwise needs a signed-in user, so a new endpoint is protected by default.
+        // The few open endpoints (register, login, refresh, logout) opt out with AllowAnonymous.
+        options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build();
         options.AddPolicy(CanRead, p => p.RequireRole(AccountRoles.Viewer, AccountRoles.Editor, AccountRoles.Admin));
         options.AddPolicy(CanEdit, p => p.RequireRole(AccountRoles.Editor, AccountRoles.Admin));
         options.AddPolicy(CanAdminister, p => p.RequireRole(AccountRoles.Admin));
