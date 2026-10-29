@@ -5,5 +5,4 @@ public sealed record CreateCreativeRequest(
     string? Headline,
     string? Body,
     string? Cta,
-    string? ImageUrl,
-    string? DisplayName) : ICreativeFields;
+    string? ImageUrl) : ICreativeFields;

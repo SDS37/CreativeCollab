@@ -6,5 +6,4 @@ public sealed record UpdateCreativeRequest(
     string? Body,
     string? Cta,
     string? ImageUrl,
-    string? DisplayName,
     int? Version) : ICreativeFields;

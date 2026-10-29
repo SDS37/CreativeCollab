@@ -31,18 +31,17 @@ public sealed class CreativesApiTests : IDisposable
         Assert.Equal(0, body.GetArrayLength());
     }
 
-    private static object ValidCreative(string name = "Spring sale", string displayName = "Ana") => new
+    private static object ValidCreative(string name = "Spring sale") => new
     {
         name,
         headline = "Save big",
         body = "Everything must go this weekend.",
         cta = "Shop now",
         imageUrl = (string?)null,
-        displayName,
     };
 
     [Fact]
-    public async Task Create_returns_201_with_version_1_and_records_display_name()
+    public async Task Create_returns_201_with_version_1_and_records_the_account_name()
     {
         var client = await NewClientAsync();
 
@@ -111,7 +110,6 @@ public sealed class CreativesApiTests : IDisposable
             body = new string('b', 201),
             cta = new string('c', 21),
             imageUrl = "not-a-url",
-            displayName = "Ana",
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
@@ -126,7 +124,6 @@ public sealed class CreativesApiTests : IDisposable
     [InlineData("headline")]
     [InlineData("body")]
     [InlineData("cta")]
-    [InlineData("displayName")]
     public async Task Create_returns_400_when_a_required_field_is_missing(string field)
     {
         var client = await NewClientAsync();
@@ -148,7 +145,7 @@ public sealed class CreativesApiTests : IDisposable
         var client = await NewClientAsync();
 
         var response = await client.PostAsJsonAsync("/api/creatives",
-            new { name = "n", headline = "h", body = "b", cta = "c", imageUrl, displayName = "Ana" });
+            new { name = "n", headline = "h", body = "b", cta = "c", imageUrl });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -159,7 +156,7 @@ public sealed class CreativesApiTests : IDisposable
         var client = await NewClientAsync();
 
         var response = await client.PostAsJsonAsync("/api/creatives",
-            new { name = "n", headline = "h", body = "b", cta = "c", imageUrl = "https://example.com/a.png", displayName = "Ana" });
+            new { name = "n", headline = "h", body = "b", cta = "c", imageUrl = "https://example.com/a.png" });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
@@ -170,21 +167,20 @@ public sealed class CreativesApiTests : IDisposable
         var client = await NewClientAsync();
 
         var response = await client.PostAsJsonAsync("/api/creatives",
-            new { name = "n", headline = "h", body = "b", cta = "c", imageUrl = "", displayName = "Ana" });
+            new { name = "n", headline = "h", body = "b", cta = "c", imageUrl = "" });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
         Assert.Equal(JsonValueKind.Null, body.GetProperty("imageUrl").ValueKind);
     }
 
-    private static object ValidUpdate(int? version, string name = "Spring sale v2", string displayName = "Bo") => new
+    private static object ValidUpdate(int? version, string name = "Spring sale v2") => new
     {
         name,
         headline = "Save more",
         body = "Everything must go.",
         cta = "Buy",
         imageUrl = (string?)null,
-        displayName,
         version,
     };
 
@@ -200,8 +196,9 @@ public sealed class CreativesApiTests : IDisposable
         var client = await NewClientAsync();
         var created = await CreateAsync(client);
         var id = created.GetProperty("id").GetGuid();
+        var bo = await _hosts.Last().SignedInAsync(name: "Bo");
 
-        var response = await client.PutAsJsonAsync($"/api/creatives/{id}", ValidUpdate(1));
+        var response = await bo.PutAsJsonAsync($"/api/creatives/{id}", ValidUpdate(1));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -218,9 +215,10 @@ public sealed class CreativesApiTests : IDisposable
     {
         var client = await NewClientAsync();
         var id = (await CreateAsync(client)).GetProperty("id").GetGuid();
-        await client.PutAsJsonAsync($"/api/creatives/{id}", ValidUpdate(1, name: "Ana's winner", displayName: "Ana"));
+        await client.PutAsJsonAsync($"/api/creatives/{id}", ValidUpdate(1, name: "Ana's winner"));
+        var bo = await _hosts.Last().SignedInAsync(name: "Bo");
 
-        var response = await client.PutAsJsonAsync($"/api/creatives/{id}", ValidUpdate(1, name: "Bo's loser"));
+        var response = await bo.PutAsJsonAsync($"/api/creatives/{id}", ValidUpdate(1, name: "Bo's loser"));
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         var problem = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -256,13 +254,12 @@ public sealed class CreativesApiTests : IDisposable
             body = new string('b', 201),
             cta = new string('c', 21),
             imageUrl = "ftp://x/a.png",
-            displayName = "",
             version = 1,
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var errors = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("errors");
-        foreach (var field in new[] { "name", "headline", "body", "cta", "imageUrl", "displayName" })
+        foreach (var field in new[] { "name", "headline", "body", "cta", "imageUrl" })
             Assert.True(errors.TryGetProperty(field, out _), $"expected a validation error for {field}");
     }
 
@@ -295,5 +292,41 @@ public sealed class CreativesApiTests : IDisposable
             .Content.ReadFromJsonAsync<JsonElement>();
 
         Assert.Equal(DateTimeOffset.Parse("2026-01-01T01:00:00Z"), body.GetProperty("updatedAt").GetDateTimeOffset());
+    }
+
+    [Fact]
+    public async Task Create_records_the_account_name_and_a_body_field_cannot_spoof_it()
+    {
+        using var host = new ApiFactory();
+        var bo = await host.SignedInAsync(name: "Bo");
+
+        var response = await bo.PostAsJsonAsync("/api/creatives", new
+        {
+            name = "n", headline = "h", body = "b", cta = "c",
+            displayName = "Mallory", updatedBy = "Mallory",
+        });
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Equal("Bo", (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("updatedBy").GetString());
+    }
+
+    [Fact]
+    public async Task Update_records_the_account_name_of_the_caller_and_a_body_field_cannot_spoof_it()
+    {
+        using var host = new ApiFactory();
+        var ana = await host.SignedInAsync(name: "Ana");
+        var bo = await host.SignedInAsync(name: "Bo");
+        var id = (await CreateAsync(ana)).GetProperty("id").GetGuid();
+
+        var response = await bo.PutAsJsonAsync($"/api/creatives/{id}", new
+        {
+            name = "n", headline = "h2", body = "b", cta = "c", version = 1,
+            displayName = "Ana", updatedBy = "Ana",
+        });
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("Bo", (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("updatedBy").GetString());
+        var stored = await ana.GetFromJsonAsync<JsonElement>($"/api/creatives/{id}");
+        Assert.Equal("Bo", stored.GetProperty("updatedBy").GetString());
     }
 }

@@ -16,7 +16,7 @@ public sealed class CreativeService(
 
     public Task<Creative?> GetAsync(Guid id, CancellationToken ct) => repository.GetAsync(id, ct);
 
-    public async Task<CreateResult> CreateAsync(CreateCreativeRequest request, CancellationToken ct)
+    public async Task<CreateResult> CreateAsync(CreateCreativeRequest request, string updatedBy, CancellationToken ct)
     {
         var imageUrl = NormalizeImageUrl(request.ImageUrl);
         if (imageUrl is not null && await imageValidator.CheckAsync(imageUrl, ct) is { IsValid: false } bad)
@@ -31,13 +31,13 @@ public sealed class CreativeService(
             ImageUrl: imageUrl,
             Version: 1,
             UpdatedAt: time.GetUtcNow(),
-            UpdatedBy: request.DisplayName!);
+            UpdatedBy: updatedBy);
 
         await repository.AddAsync(creative, ct);
         return new CreateResult.Created(creative);
     }
 
-    public async Task<UpdateResult> UpdateAsync(Guid id, UpdateCreativeRequest request, CancellationToken ct)
+    public async Task<UpdateResult> UpdateAsync(Guid id, UpdateCreativeRequest request, string updatedBy, CancellationToken ct)
     {
         var existing = await repository.GetAsync(id, ct);
         if (existing is null)
@@ -60,7 +60,7 @@ public sealed class CreativeService(
             ImageUrl = imageUrl,
             Version = existing.Version + 1,
             UpdatedAt = time.GetUtcNow(),
-            UpdatedBy = request.DisplayName!,
+            UpdatedBy = updatedBy,
         };
 
         if (await repository.TryUpdateAsync(updated, existing.Version, ct))

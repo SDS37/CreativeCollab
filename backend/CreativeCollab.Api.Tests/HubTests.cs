@@ -38,10 +38,10 @@ public sealed class HubTests : IAsyncDisposable
     }
 
     private static object NewCreative() =>
-        new { name = "n", headline = "h", body = "b", cta = "c", displayName = "Ana" };
+        new { name = "n", headline = "h", body = "b", cta = "c" };
 
-    private static object Edit(int version, string headline = "Edited", string displayName = "Bo") =>
-        new { name = "n", headline, body = "b", cta = "c", displayName, version };
+    private static object Edit(int version, string headline = "Edited") =>
+        new { name = "n", headline, body = "b", cta = "c", version };
 
     private async Task<Guid> CreateCreativeAsync(HttpClient http)
     {
@@ -59,8 +59,9 @@ public sealed class HubTests : IAsyncDisposable
         var bo = await ConnectAsync();
         await ana.JoinAsync(id, "Ana");
         await bo.JoinAsync(id, "Bo");
+        var editor = await _host.SignedInAsync(name: "Bo");
 
-        var response = await http.PutAsJsonAsync($"/api/creatives/{id}", Edit(1));
+        var response = await editor.PutAsJsonAsync($"/api/creatives/{id}", Edit(1));
         var saved = await response.Content.ReadFromJsonAsync<JsonElement>();
 
         foreach (var client in new[] { ana, bo })

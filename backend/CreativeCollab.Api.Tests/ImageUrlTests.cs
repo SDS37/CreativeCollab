@@ -10,7 +10,7 @@ public sealed class ImageUrlTests
     private const string Url = "https://cdn.example.com/banner.png";
 
     private static object Create(string? imageUrl) =>
-        new { name = "n", headline = "h", body = "b", cta = "c", imageUrl, displayName = "Ana" };
+        new { name = "n", headline = "h", body = "b", cta = "c", imageUrl };
 
     private static async Task<JsonElement> ErrorsAsync(HttpResponseMessage response) =>
         (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("errors");
@@ -177,7 +177,7 @@ public sealed class ImageUrlTests
     }
 
     private static object Update(string? imageUrl, int version, string name = "n") =>
-        new { name, headline = "h", body = "b", cta = "c", imageUrl, displayName = "Bo", version };
+        new { name, headline = "h", body = "b", cta = "c", imageUrl, version };
 
     private static async Task<Guid> CreateWithImageAsync(HttpClient client, string? imageUrl)
     {

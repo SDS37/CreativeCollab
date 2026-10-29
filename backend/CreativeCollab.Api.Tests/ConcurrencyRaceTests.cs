@@ -38,13 +38,13 @@ public sealed class ConcurrencyRaceTests
         using var host = new ApiFactory(interceptors: rival);
         var client = await host.SignedInAsync();
         var created = await (await client.PostAsJsonAsync("/api/creatives",
-            new { name = "Original", headline = "h", body = "b", cta = "c", displayName = "Cy" }))
+            new { name = "Original", headline = "h", body = "b", cta = "c" }))
             .Content.ReadFromJsonAsync<JsonElement>();
         var id = created.GetProperty("id").GetGuid();
         rival.Armed = true;
 
         var response = await client.PutAsJsonAsync($"/api/creatives/{id}",
-            new { name = "Bo's edit", headline = "h", body = "b", cta = "c", displayName = "Bo", version = 1 });
+            new { name = "Bo's edit", headline = "h", body = "b", cta = "c", version = 1 });
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
         var current = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("current");

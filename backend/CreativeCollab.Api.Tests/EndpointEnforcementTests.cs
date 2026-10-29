@@ -11,7 +11,7 @@ public sealed class EndpointEnforcementTests : IDisposable
     public void Dispose() => _host.Dispose();
 
     private static object Body(int? version = null) =>
-        new { name = "n", headline = "h", body = "b", cta = "c", displayName = "Ana", version };
+        new { name = "n", headline = "h", body = "b", cta = "c", version };
 
     private async Task<Guid> ExistingCreativeAsync()
     {

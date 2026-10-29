@@ -18,7 +18,6 @@ public abstract class CreativeFieldsValidator<T> : AbstractValidator<T> where T 
         RuleFor(x => x.Headline).NotEmpty().MaximumLength(HeadlineMaxLength);
         RuleFor(x => x.Body).NotEmpty().MaximumLength(BodyMaxLength);
         RuleFor(x => x.Cta).NotEmpty().MaximumLength(CtaMaxLength);
-        RuleFor(x => x.DisplayName).NotEmpty();
         RuleFor(x => x.ImageUrl)
             .MaximumLength(ImageUrlMaxLength)
             .Must(BeAbsoluteHttpUrl).WithMessage("'{PropertyName}' must be an absolute http or https URL.")

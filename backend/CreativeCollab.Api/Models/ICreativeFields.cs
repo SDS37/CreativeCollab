@@ -1,6 +1,6 @@
 namespace CreativeCollab.Api.Models;
 
-/// <summary>The editable fields and Display name shared by create and update requests.</summary>
+/// <summary>The editable fields shared by create and update requests.</summary>
 public interface ICreativeFields
 {
     string? Name { get; }
@@ -8,5 +8,4 @@ public interface ICreativeFields
     string? Body { get; }
     string? Cta { get; }
     string? ImageUrl { get; }
-    string? DisplayName { get; }
 }
