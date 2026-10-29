@@ -1,6 +1,7 @@
 import { Component, computed, inject, OnInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { CreativeSignalStore } from '../../core/creative-signal-store';
+import { Session } from '../../core/session';
 import { CreativeList } from '../creative-list/creative-list';
 
 @Component({
@@ -10,6 +11,7 @@ import { CreativeList } from '../creative-list/creative-list';
 })
 export class CreativeListPage implements OnInit {
   protected readonly store = inject(CreativeSignalStore);
+  protected readonly session = inject(Session);
   private readonly router = inject(Router);
 
   protected readonly isEmpty = computed(() => this.store.creatives().length === 0);

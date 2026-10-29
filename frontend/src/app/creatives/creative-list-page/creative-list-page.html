@@ -1,6 +1,8 @@
 <header class="page-header">
   <h1>Creatives</h1>
-  <a routerLink="/creatives/new">New Creative</a>
+  @if (session.canEdit()) {
+    <a routerLink="/creatives/new">New Creative</a>
+  }
 </header>
 
 @if (store.loading()) {
