@@ -1,21 +1,21 @@
 import { Routes } from '@angular/router';
+import { authGuard, roleGuard } from './core/guards';
+
+const editPage = () =>
+  import('./creatives/creative-edit-page/creative-edit-page').then((m) => m.CreativeEditPage);
 
 export const routes: Routes = [
   { path: '', pathMatch: 'full', redirectTo: 'creatives' },
+  { path: 'login', loadComponent: () => import('./auth/login-page/login-page').then((m) => m.LoginPage) },
+  { path: 'register', loadComponent: () => import('./auth/register-page/register-page').then((m) => m.RegisterPage) },
   {
     path: 'creatives',
+    canActivate: [authGuard],
     loadComponent: () =>
       import('./creatives/creative-list-page/creative-list-page').then((m) => m.CreativeListPage),
   },
-  {
-    path: 'creatives/new',
-    loadComponent: () =>
-      import('./creatives/creative-edit-page/creative-edit-page').then((m) => m.CreativeEditPage),
-  },
-  {
-    path: 'creatives/:id',
-    loadComponent: () =>
-      import('./creatives/creative-edit-page/creative-edit-page').then((m) => m.CreativeEditPage),
-  },
+  // Declared before ':id' so "new" is not read as an id. Creating needs Editor; opening one to read does not.
+  { path: 'creatives/new', canActivate: [roleGuard('Editor')], loadComponent: editPage },
+  { path: 'creatives/:id', canActivate: [authGuard], loadComponent: editPage },
   { path: '**', redirectTo: 'creatives' },
 ];
