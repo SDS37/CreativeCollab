@@ -1,0 +1,53 @@
+import { expect, type APIRequestContext, type Page } from '@playwright/test';
+
+export const API = 'http://localhost:5114/api';
+
+/** The first Admin, seeded by the API from the config the Playwright web server passes it. */
+export const ADMIN = {
+  email: 'e2e-admin@example.test',
+  password: 'e2e admin passphrase 1',
+  displayName: 'E2E Admin',
+};
+
+const PASSWORD = 'a long e2e passphrase';
+
+export interface Account {
+  id: string;
+  email: string;
+  password: string;
+  displayName: string;
+}
+
+/** Registers a new account with an email no other run uses. Register does not sign in. */
+export async function register(request: APIRequestContext, displayName: string): Promise<Account> {
+  const email = `${displayName.toLowerCase()}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}@example.test`;
+  const response = await request.post(`${API}/auth/register`, { data: { email, password: PASSWORD, displayName } });
+  expect(response.status()).toBe(201);
+  const { id } = (await response.json()) as { id: string };
+  return { id, email, password: PASSWORD, displayName };
+}
+
+/** Changes a role through the real Admin endpoint, signed in as the seeded Admin. */
+export async function setRole(
+  request: APIRequestContext,
+  account: Account,
+  role: 'Viewer' | 'Editor' | 'Admin',
+): Promise<void> {
+  const login = await request.post(`${API}/auth/login`, { data: { email: ADMIN.email, password: ADMIN.password } });
+  expect(login.ok(), 'the seeded Admin can sign in').toBe(true);
+  const { accessToken } = (await login.json()) as { accessToken: string };
+  const changed = await request.put(`${API}/admin/users/${account.id}/role`, {
+    data: { role },
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  expect(changed.status()).toBe(204);
+}
+
+/** Signs in through the login screen, so the role in the token is the one the account has now. */
+export async function signIn(page: Page, account: Account, returnTo = '/'): Promise<void> {
+  await page.goto(returnTo);
+  await page.getByLabel('Email').fill(account.email);
+  await page.getByLabel('Password').fill(account.password);
+  await page.getByRole('button', { name: 'Sign in' }).click();
+  await expect(page.getByText(`Signed in as ${account.displayName}`)).toBeVisible();
+}

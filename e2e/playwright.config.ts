@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
+import { ADMIN } from './tests/accounts';
 
 const root = path.resolve(__dirname, '..');
 
@@ -25,7 +26,14 @@ export default defineConfig({
       reuseExistingServer: !process.env.CI,
       timeout: 180_000,
       // The API refuses to start without a signing key. A throwaway one per run keeps it out of the repository.
-      env: { ASPNETCORE_ENVIRONMENT: 'Development', Jwt__Key: process.env.Jwt__Key ?? randomBytes(48).toString('base64') },
+      env: {
+        ASPNETCORE_ENVIRONMENT: 'Development',
+        Jwt__Key: process.env.Jwt__Key ?? randomBytes(48).toString('base64'),
+        // The seeded Admin is how the suite makes a Viewer. Test-only values for the local development database.
+        Admin__Email: ADMIN.email,
+        Admin__Password: ADMIN.password,
+        Admin__DisplayName: ADMIN.displayName,
+      },
     },
     {
       command: 'npm start -- --host localhost --port 4200',
