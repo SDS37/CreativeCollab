@@ -30,7 +30,7 @@ public sealed class ErrorHandlingTests
             Environment = "Development",
         };
 
-        var response = await host.CreateClient().GetAsync("/api/creatives");
+        var response = await (await host.SignedInAsync()).GetAsync("/api/creatives");
 
         Assert.Equal(HttpStatusCode.InternalServerError, response.StatusCode);
         Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
@@ -50,7 +50,7 @@ public sealed class ErrorHandlingTests
     {
         using var host = new ApiFactory { Environment = "Development" };
 
-        var response = await host.CreateClient().PostAsync("/api/creatives",
+        var response = await (await host.SignedInAsync()).PostAsync("/api/creatives",
             new StringContent("{ not json", Encoding.UTF8, "application/json"));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);

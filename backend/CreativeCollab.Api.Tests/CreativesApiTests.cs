@@ -10,11 +10,11 @@ public sealed class CreativesApiTests : IDisposable
 {
     private readonly List<ApiFactory> _hosts = [];
 
-    private HttpClient NewClient(Action<IServiceCollection>? configure = null)
+    private async Task<HttpClient> NewClientAsync(Action<IServiceCollection>? configure = null)
     {
         var host = new ApiFactory(configure);
         _hosts.Add(host);
-        return host.CreateClient();
+        return await host.SignedInAsync();
     }
 
     public void Dispose() => _hosts.ForEach(h => h.Dispose());
@@ -22,7 +22,7 @@ public sealed class CreativesApiTests : IDisposable
     [Fact]
     public async Task List_returns_200_with_empty_array_when_no_creatives_exist()
     {
-        var client = NewClient();
+        var client = await NewClientAsync();
 
         var response = await client.GetAsync("/api/creatives");
 
@@ -44,7 +44,7 @@ public sealed class CreativesApiTests : IDisposable
     [Fact]
     public async Task Create_returns_201_with_version_1_and_records_display_name()
     {
-        var client = NewClient();
+        var client = await NewClientAsync();
 
         var response = await client.PostAsJsonAsync("/api/creatives", ValidCreative());
 
@@ -59,7 +59,7 @@ public sealed class CreativesApiTests : IDisposable
     [Fact]
     public async Task Get_returns_the_created_creative()
     {
-        var client = NewClient();
+        var client = await NewClientAsync();
         var created = await (await client.PostAsJsonAsync("/api/creatives", ValidCreative()))
             .Content.ReadFromJsonAsync<JsonElement>();
         var id = created.GetProperty("id").GetGuid();
@@ -75,7 +75,7 @@ public sealed class CreativesApiTests : IDisposable
     [Fact]
     public async Task Get_returns_404_for_a_missing_id()
     {
-        var client = NewClient();
+        var client = await NewClientAsync();
 
         var response = await client.GetAsync($"/api/creatives/{Guid.NewGuid()}");
 
@@ -86,7 +86,7 @@ public sealed class CreativesApiTests : IDisposable
     public async Task List_is_sorted_by_most_recently_updated_first()
     {
         var time = new FakeTimeProvider(DateTimeOffset.Parse("2026-01-01T00:00:00Z"));
-        var client = NewClient(s => s.AddSingleton<TimeProvider>(time));
+        var client = await NewClientAsync(s => s.AddSingleton<TimeProvider>(time));
 
         await client.PostAsJsonAsync("/api/creatives", ValidCreative("older"));
         time.Advance(TimeSpan.FromMinutes(5));
@@ -102,7 +102,7 @@ public sealed class CreativesApiTests : IDisposable
     [Fact]
     public async Task Create_returns_400_with_details_for_each_invalid_field()
     {
-        var client = NewClient();
+        var client = await NewClientAsync();
 
         var response = await client.PostAsJsonAsync("/api/creatives", new
         {
@@ -129,7 +129,7 @@ public sealed class CreativesApiTests : IDisposable
     [InlineData("displayName")]
     public async Task Create_returns_400_when_a_required_field_is_missing(string field)
     {
-        var client = NewClient();
+        var client = await NewClientAsync();
         var payload = JsonSerializer.SerializeToNode(ValidCreative())!.AsObject();
         payload.Remove(field);
 
@@ -145,7 +145,7 @@ public sealed class CreativesApiTests : IDisposable
     [InlineData("/relative/a.png")]
     public async Task Create_rejects_image_urls_that_are_not_absolute_http_or_https(string imageUrl)
     {
-        var client = NewClient();
+        var client = await NewClientAsync();
 
         var response = await client.PostAsJsonAsync("/api/creatives",
             new { name = "n", headline = "h", body = "b", cta = "c", imageUrl, displayName = "Ana" });
@@ -156,7 +156,7 @@ public sealed class CreativesApiTests : IDisposable
     [Fact]
     public async Task Create_accepts_a_valid_https_image_url()
     {
-        var client = NewClient();
+        var client = await NewClientAsync();
 
         var response = await client.PostAsJsonAsync("/api/creatives",
             new { name = "n", headline = "h", body = "b", cta = "c", imageUrl = "https://example.com/a.png", displayName = "Ana" });
@@ -167,7 +167,7 @@ public sealed class CreativesApiTests : IDisposable
     [Fact]
     public async Task Create_stores_an_empty_image_url_as_absent()
     {
-        var client = NewClient();
+        var client = await NewClientAsync();
 
         var response = await client.PostAsJsonAsync("/api/creatives",
             new { name = "n", headline = "h", body = "b", cta = "c", imageUrl = "", displayName = "Ana" });
@@ -197,7 +197,7 @@ public sealed class CreativesApiTests : IDisposable
     [Fact]
     public async Task Update_with_the_current_version_saves_and_increments_the_version()
     {
-        var client = NewClient();
+        var client = await NewClientAsync();
         var created = await CreateAsync(client);
         var id = created.GetProperty("id").GetGuid();
 
@@ -216,7 +216,7 @@ public sealed class CreativesApiTests : IDisposable
     [Fact]
     public async Task Update_with_a_stale_version_returns_409_with_the_latest_creative_in_current()
     {
-        var client = NewClient();
+        var client = await NewClientAsync();
         var id = (await CreateAsync(client)).GetProperty("id").GetGuid();
         await client.PutAsJsonAsync($"/api/creatives/{id}", ValidUpdate(1, name: "Ana's winner", displayName: "Ana"));
 
@@ -236,7 +236,7 @@ public sealed class CreativesApiTests : IDisposable
     [Fact]
     public async Task Update_returns_404_for_a_missing_id()
     {
-        var client = NewClient();
+        var client = await NewClientAsync();
 
         var response = await client.PutAsJsonAsync($"/api/creatives/{Guid.NewGuid()}", ValidUpdate(1));
 
@@ -246,7 +246,7 @@ public sealed class CreativesApiTests : IDisposable
     [Fact]
     public async Task Update_returns_400_with_details_for_each_invalid_field()
     {
-        var client = NewClient();
+        var client = await NewClientAsync();
         var id = (await CreateAsync(client)).GetProperty("id").GetGuid();
 
         var response = await client.PutAsJsonAsync($"/api/creatives/{id}", new
@@ -272,7 +272,7 @@ public sealed class CreativesApiTests : IDisposable
     [InlineData(-3)]
     public async Task Update_returns_400_when_the_version_is_missing_or_below_1(int? version)
     {
-        var client = NewClient();
+        var client = await NewClientAsync();
         var id = (await CreateAsync(client)).GetProperty("id").GetGuid();
 
         var response = await client.PutAsJsonAsync($"/api/creatives/{id}", ValidUpdate(version));
@@ -286,9 +286,10 @@ public sealed class CreativesApiTests : IDisposable
     public async Task Update_sets_updated_at_from_the_clock()
     {
         var time = new FakeTimeProvider(DateTimeOffset.Parse("2026-01-01T00:00:00Z"));
-        var client = NewClient(s => s.AddSingleton<TimeProvider>(time));
+        var client = await NewClientAsync(s => s.AddSingleton<TimeProvider>(time));
         var id = (await CreateAsync(client)).GetProperty("id").GetGuid();
         time.Advance(TimeSpan.FromHours(1));
+        client = await _hosts.Last().SignedInAsync(); // the first token has expired by now
 
         var body = await (await client.PutAsJsonAsync($"/api/creatives/{id}", ValidUpdate(1)))
             .Content.ReadFromJsonAsync<JsonElement>();

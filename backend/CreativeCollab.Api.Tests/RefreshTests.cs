@@ -119,7 +119,7 @@ public sealed class RefreshTests : IDisposable
         var client = NewClient();
         var session = await client.SignInAsync("ana@example.com");
 
-        var logout = await client.LogoutAsync(session.RefreshCookie);
+        var logout = await client.LogoutAsync(session.RefreshCookie, session.AccessToken);
 
         Assert.Equal(HttpStatusCode.NoContent, logout.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.RefreshAsync(session.RefreshCookie)).StatusCode);
@@ -128,7 +128,9 @@ public sealed class RefreshTests : IDisposable
     [Fact]
     public async Task Signing_out_without_a_session_is_harmless()
     {
-        var logout = await NewClient().LogoutAsync(cookie: null);
+        var session = await NewClient().SignInAsync("ana@example.com");
+
+        var logout = await NewClient().LogoutAsync(cookie: null, session.AccessToken);
 
         Assert.Equal(HttpStatusCode.NoContent, logout.StatusCode);
     }

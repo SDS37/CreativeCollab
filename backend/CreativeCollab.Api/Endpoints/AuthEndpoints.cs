@@ -51,7 +51,7 @@ public static class AuthEndpoints
         {
             await sessions.EndAsync(http);
             return Results.NoContent();
-        });
+        }).RequireAuthorization();
 
         group.MapGet("/me", (ClaimsPrincipal principal) => Results.Ok(new
         {

@@ -7,6 +7,8 @@ namespace CreativeCollab.Api.Tests;
 
 public sealed class PersistenceTests : IDisposable
 {
+    private const string Email = "ana@example.com";
+
     private readonly string _dbPath = Path.Combine(Path.GetTempPath(), $"creativecollab-{Guid.NewGuid():N}.db");
 
     /// <summary>A Development host on a real database file, as <c>dotnet run</c> would start.</summary>
@@ -27,13 +29,13 @@ public sealed class PersistenceTests : IDisposable
         Guid id;
         await using (var first = StartHost())
         {
-            var response = await first.CreateClient().PostAsJsonAsync("/api/creatives",
+            var response = await (await first.CreateClient().AuthenticateAsync(Email)).PostAsJsonAsync("/api/creatives",
                 new { name = "Survivor", headline = "h", body = "b", cta = "c", displayName = "Ana" });
             id = (await response.Content.ReadFromJsonAsync<JsonElement>()).GetProperty("id").GetGuid();
         }
 
         await using var second = StartHost();
-        var fetched = await second.CreateClient().GetFromJsonAsync<JsonElement>($"/api/creatives/{id}");
+        var fetched = await (await second.CreateClient().AuthenticateAsync(Email, register: false)).GetFromJsonAsync<JsonElement>($"/api/creatives/{id}");
 
         Assert.Equal("Survivor", fetched.GetProperty("name").GetString());
         Assert.Equal("Ana", fetched.GetProperty("updatedBy").GetString());
@@ -44,7 +46,7 @@ public sealed class PersistenceTests : IDisposable
     {
         await using var host = StartHost();
 
-        var list = await host.CreateClient().GetFromJsonAsync<JsonElement>("/api/creatives");
+        var list = await (await host.CreateClient().AuthenticateAsync(Email)).GetFromJsonAsync<JsonElement>("/api/creatives");
 
         Assert.True(list.GetArrayLength() > 0);
         foreach (var creative in list.EnumerateArray())
@@ -60,12 +62,12 @@ public sealed class PersistenceTests : IDisposable
         int seeded;
         await using (var first = StartHost())
         {
-            var list = await first.CreateClient().GetFromJsonAsync<JsonElement>("/api/creatives");
+            var list = await (await first.CreateClient().AuthenticateAsync(Email)).GetFromJsonAsync<JsonElement>("/api/creatives");
             seeded = list.GetArrayLength();
         }
 
         await using var second = StartHost();
-        var after = await second.CreateClient().GetFromJsonAsync<JsonElement>("/api/creatives");
+        var after = await (await second.CreateClient().AuthenticateAsync(Email, register: false)).GetFromJsonAsync<JsonElement>("/api/creatives");
 
         Assert.Equal(seeded, after.GetArrayLength());
     }

@@ -20,7 +20,7 @@ public sealed class ImageUrlTests
     {
         using var host = new ApiFactory { Images = StubHttpMessageHandler.Responding(HttpStatusCode.OK, "text/html") };
 
-        var response = await host.CreateClient().PostAsJsonAsync("/api/creatives", Create(Url));
+        var response = await (await host.SignedInAsync()).PostAsJsonAsync("/api/creatives", Create(Url));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.True((await ErrorsAsync(response)).TryGetProperty("imageUrl", out _));
@@ -32,7 +32,7 @@ public sealed class ImageUrlTests
         var images = StubHttpMessageHandler.Responding(HttpStatusCode.OK, "image/jpeg");
         using var host = new ApiFactory { Images = images };
 
-        var response = await host.CreateClient().PostAsJsonAsync("/api/creatives", Create(Url));
+        var response = await (await host.SignedInAsync()).PostAsJsonAsync("/api/creatives", Create(Url));
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var request = Assert.Single(images.Requests);
@@ -48,7 +48,7 @@ public sealed class ImageUrlTests
             : StubHttpMessageHandler.Response(HttpStatusCode.PartialContent, "image/png")));
         using var host = new ApiFactory { Images = images };
 
-        var response = await host.CreateClient().PostAsJsonAsync("/api/creatives", Create(Url));
+        var response = await (await host.SignedInAsync()).PostAsJsonAsync("/api/creatives", Create(Url));
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         Assert.Equal([HttpMethod.Head, HttpMethod.Get], images.Requests.Select(r => r.Method));
@@ -65,7 +65,7 @@ public sealed class ImageUrlTests
     {
         using var host = new ApiFactory { Images = StubHttpMessageHandler.Responding(status) };
 
-        var response = await host.CreateClient().PostAsJsonAsync("/api/creatives", Create(Url));
+        var response = await (await host.SignedInAsync()).PostAsJsonAsync("/api/creatives", Create(Url));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.True((await ErrorsAsync(response)).TryGetProperty("imageUrl", out _));
@@ -77,7 +77,7 @@ public sealed class ImageUrlTests
         var images = new StubHttpMessageHandler((_, _) => throw new HttpRequestException("connection refused"));
         using var host = new ApiFactory { Images = images };
 
-        var response = await host.CreateClient().PostAsJsonAsync("/api/creatives", Create(Url));
+        var response = await (await host.SignedInAsync()).PostAsJsonAsync("/api/creatives", Create(Url));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.True((await ErrorsAsync(response)).TryGetProperty("imageUrl", out _));
@@ -96,7 +96,7 @@ public sealed class ImageUrlTests
             Images = images,
         };
 
-        var response = await host.CreateClient().PostAsJsonAsync("/api/creatives", Create(Url));
+        var response = await (await host.SignedInAsync()).PostAsJsonAsync("/api/creatives", Create(Url));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.True((await ErrorsAsync(response)).TryGetProperty("imageUrl", out _));
@@ -130,7 +130,7 @@ public sealed class ImageUrlTests
         using var host = new ApiFactory { Images = images };
         host.Resolver.Map("internal.example.com", "10.1.2.3").Map("mixed.example.com", "93.184.216.34", "192.168.0.9");
 
-        var response = await host.CreateClient().PostAsJsonAsync("/api/creatives", Create(imageUrl));
+        var response = await (await host.SignedInAsync()).PostAsJsonAsync("/api/creatives", Create(imageUrl));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.True((await ErrorsAsync(response)).TryGetProperty("imageUrl", out _));
@@ -146,7 +146,7 @@ public sealed class ImageUrlTests
     {
         using var host = new ApiFactory();
 
-        var response = await host.CreateClient().PostAsJsonAsync("/api/creatives", Create(imageUrl));
+        var response = await (await host.SignedInAsync()).PostAsJsonAsync("/api/creatives", Create(imageUrl));
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
@@ -158,7 +158,7 @@ public sealed class ImageUrlTests
         using var host = new ApiFactory { Images = images };
         host.Resolver.Map("nowhere.example.com");
 
-        var response = await host.CreateClient().PostAsJsonAsync("/api/creatives", Create("https://nowhere.example.com/a.png"));
+        var response = await (await host.SignedInAsync()).PostAsJsonAsync("/api/creatives", Create("https://nowhere.example.com/a.png"));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         Assert.Empty(images.Requests);
@@ -170,7 +170,7 @@ public sealed class ImageUrlTests
         var images = StubHttpMessageHandler.Responding(HttpStatusCode.OK, "image/png");
         using var host = new ApiFactory { Images = images };
 
-        var response = await host.CreateClient().PostAsJsonAsync("/api/creatives", Create(null));
+        var response = await (await host.SignedInAsync()).PostAsJsonAsync("/api/creatives", Create(null));
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         Assert.Empty(images.Requests);
@@ -191,7 +191,7 @@ public sealed class ImageUrlTests
     {
         var images = StubHttpMessageHandler.Responding(HttpStatusCode.OK, "image/png");
         using var host = new ApiFactory { Images = images };
-        var client = host.CreateClient();
+        var client = await host.SignedInAsync();
         var id = await CreateWithImageAsync(client, Url);
         var callsAfterCreate = images.Requests.Count;
 
@@ -207,7 +207,7 @@ public sealed class ImageUrlTests
         var images = new StubHttpMessageHandler((request, _) => Task.FromResult(
             StubHttpMessageHandler.Response(HttpStatusCode.OK, request.RequestUri!.AbsolutePath.EndsWith(".png") ? "image/png" : "text/html")));
         using var host = new ApiFactory { Images = images };
-        var client = host.CreateClient();
+        var client = await host.SignedInAsync();
         var id = await CreateWithImageAsync(client, Url);
 
         var response = await client.PutAsJsonAsync($"/api/creatives/{id}", Update("https://cdn.example.com/page.html", 1));
@@ -224,7 +224,7 @@ public sealed class ImageUrlTests
     {
         var images = StubHttpMessageHandler.Responding(HttpStatusCode.OK, "image/webp");
         using var host = new ApiFactory { Images = images };
-        var client = host.CreateClient();
+        var client = await host.SignedInAsync();
         var id = await CreateWithImageAsync(client, null);
 
         var response = await client.PutAsJsonAsync($"/api/creatives/{id}", Update("https://cdn.example.com/new.webp", 1));
@@ -238,7 +238,7 @@ public sealed class ImageUrlTests
     {
         var images = StubHttpMessageHandler.Responding(HttpStatusCode.OK, "image/png");
         using var host = new ApiFactory { Images = images };
-        var client = host.CreateClient();
+        var client = await host.SignedInAsync();
         var id = await CreateWithImageAsync(client, null);
         await client.PutAsJsonAsync($"/api/creatives/{id}", Update(null, 1));
 

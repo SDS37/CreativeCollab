@@ -39,6 +39,16 @@ internal static class AuthClient
         return await ReadSessionAsync(login);
     }
 
+    /// <summary>Signs in (registering first when asked) and makes the client send the access token from then on.</summary>
+    public static async Task<HttpClient> AuthenticateAsync(this HttpClient client, string email, bool register = true)
+    {
+        if (register) Assert.Equal(HttpStatusCode.Created, (await client.RegisterAsync(email)).StatusCode);
+        var login = await client.LoginAsync(email);
+        Assert.Equal(HttpStatusCode.OK, login.StatusCode);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", (await ReadSessionAsync(login)).AccessToken);
+        return client;
+    }
+
     public static async Task<Session> ReadSessionAsync(HttpResponseMessage response)
     {
         var body = await response.Content.ReadFromJsonAsync<JsonElement>();
@@ -49,11 +59,13 @@ internal static class AuthClient
 
     public static Task<HttpResponseMessage> RefreshAsync(this HttpClient client, string? cookie) => PostWithCookie(client, "/api/auth/refresh", cookie);
 
-    public static Task<HttpResponseMessage> LogoutAsync(this HttpClient client, string? cookie) => PostWithCookie(client, "/api/auth/logout", cookie);
+    public static Task<HttpResponseMessage> LogoutAsync(this HttpClient client, string? cookie, string? accessToken = null) =>
+        PostWithCookie(client, "/api/auth/logout", cookie, accessToken);
 
-    private static Task<HttpResponseMessage> PostWithCookie(HttpClient client, string url, string? cookie)
+    private static Task<HttpResponseMessage> PostWithCookie(HttpClient client, string url, string? cookie, string? accessToken = null)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, url);
+        if (accessToken is not null) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
         if (cookie is not null) request.Headers.Add("Cookie", $"{CookieName}={cookie}");
         return client.SendAsync(request);
     }

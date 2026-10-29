@@ -53,7 +53,7 @@ public sealed class HubTests : IAsyncDisposable
     [Fact]
     public async Task A_successful_update_broadcasts_the_full_creative_to_everyone_in_the_group_including_the_sender()
     {
-        var http = _host.CreateClient();
+        var http = await _host.SignedInAsync();
         var id = await CreateCreativeAsync(http);
         var ana = await ConnectAsync();
         var bo = await ConnectAsync();
@@ -155,7 +155,7 @@ public sealed class HubTests : IAsyncDisposable
     [Fact]
     public async Task Presence_and_updates_stay_within_each_creatives_group()
     {
-        var http = _host.CreateClient();
+        var http = await _host.SignedInAsync();
         var first = await CreateCreativeAsync(http);
         var second = await CreateCreativeAsync(http);
         var ana = await ConnectAsync();
@@ -173,7 +173,7 @@ public sealed class HubTests : IAsyncDisposable
     [Fact]
     public async Task A_rejected_update_broadcasts_nothing()
     {
-        var http = _host.CreateClient();
+        var http = await _host.SignedInAsync();
         var id = await CreateCreativeAsync(http);
         var ana = await ConnectAsync();
         await ana.JoinAsync(id, "Ana");
@@ -204,7 +204,7 @@ public sealed class HubTests : IAsyncDisposable
     [Fact]
     public async Task The_hub_negotiates_with_credentials_for_the_allowed_origin_only()
     {
-        var http = _host.CreateClient();
+        var http = await _host.SignedInAsync();
 
         HttpRequestMessage Negotiate(string origin)
         {

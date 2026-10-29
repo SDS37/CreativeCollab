@@ -17,7 +17,7 @@ public sealed class DependencyInjectionTests
             o.ValidateOnBuild = true;
         }));
 
-        var response = await host.CreateClient().GetAsync("/api/creatives");
+        var response = await (await host.SignedInAsync()).GetAsync("/api/creatives");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }

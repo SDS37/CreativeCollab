@@ -36,7 +36,7 @@ public sealed class ConcurrencyRaceTests
     {
         var rival = new RivalSaveInterceptor();
         using var host = new ApiFactory(interceptors: rival);
-        var client = host.CreateClient();
+        var client = await host.SignedInAsync();
         var created = await (await client.PostAsJsonAsync("/api/creatives",
             new { name = "Original", headline = "h", body = "b", cta = "c", displayName = "Cy" }))
             .Content.ReadFromJsonAsync<JsonElement>();

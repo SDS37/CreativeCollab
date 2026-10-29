@@ -1,3 +1,4 @@
+using CreativeCollab.Api.Auth;
 using CreativeCollab.Api.Models;
 using CreativeCollab.Api.Services;
 using CreativeCollab.Api.Validation;
@@ -11,10 +12,10 @@ public static class CreativeEndpoints
         var group = app.MapGroup("/api/creatives");
 
         group.MapGet("/", async (CreativeService service, CancellationToken ct) =>
-            Results.Ok(await service.ListAsync(ct)));
+            Results.Ok(await service.ListAsync(ct))).RequireAuthorization(Policies.CanRead);
 
         group.MapGet("/{id:guid}", async (Guid id, CreativeService service, CancellationToken ct) =>
-            await service.GetAsync(id, ct) is { } creative ? Results.Ok(creative) : Results.NotFound());
+            await service.GetAsync(id, ct) is { } creative ? Results.Ok(creative) : Results.NotFound()).RequireAuthorization(Policies.CanRead);
 
         group.MapPost("/", async (CreateCreativeRequest request, CreativeService service, CancellationToken ct) =>
         {
@@ -24,7 +25,7 @@ public static class CreativeEndpoints
                 CreateResult.InvalidImage i => ImageProblem(i.Message),
                 _ => throw new InvalidOperationException("Unhandled create result."),
             };
-        }).AddEndpointFilter<ValidationFilter<CreateCreativeRequest>>();
+        }).AddEndpointFilter<ValidationFilter<CreateCreativeRequest>>().RequireAuthorization(Policies.CanEdit);
 
         group.MapPut("/{id:guid}", async (Guid id, UpdateCreativeRequest request, CreativeService service, CancellationToken ct) =>
             await service.UpdateAsync(id, request, ct) switch
@@ -33,7 +34,7 @@ public static class CreativeEndpoints
                 UpdateResult.Conflict c => ConflictResult(c.Current),
                 UpdateResult.InvalidImage i => ImageProblem(i.Message),
                 _ => Results.NotFound(),
-            }).AddEndpointFilter<ValidationFilter<UpdateCreativeRequest>>();
+            }).AddEndpointFilter<ValidationFilter<UpdateCreativeRequest>>().RequireAuthorization(Policies.CanEdit);
 
         return app;
     }

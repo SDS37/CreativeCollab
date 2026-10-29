@@ -88,6 +88,7 @@ public sealed class IdentityBootstrapTests : IDisposable
 
         await using var host = StartHost();
         var client = host.CreateClient();
+        await client.AuthenticateAsync("ana@example.com");
 
         var creative = await client.GetFromJsonAsync<JsonElement>($"/api/creatives/{id}");
         Assert.Equal("Old campaign", creative.GetProperty("name").GetString());
@@ -95,7 +96,6 @@ public sealed class IdentityBootstrapTests : IDisposable
         Assert.Equal(7, creative.GetProperty("version").GetInt32());
         var list = await client.GetFromJsonAsync<JsonElement>("/api/creatives");
         Assert.Equal(1, list.GetArrayLength()); // not seeded: the table was not empty
-        Assert.Equal(HttpStatusCode.Created, (await client.RegisterAsync("ana@example.com")).StatusCode);
     }
 
     private async Task CreateDatabaseAsItWasBeforeAccountsAsync(Guid id)
