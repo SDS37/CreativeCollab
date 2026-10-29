@@ -14,7 +14,9 @@ const update: Creative = {
   updatedBy: 'Grace',
 };
 
-test('names who saved and which Version arrived, without discarding the Draft', async ({ mount }) => {
+test('names who saved and which Version arrived, without discarding the Draft', async ({
+  mount,
+}) => {
   const component = await mount(RemoteUpdateNotice, { props: { update } });
 
   await expect(component).toContainText('Grace updated this Creative (Version 4)');

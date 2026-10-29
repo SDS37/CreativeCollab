@@ -31,13 +31,15 @@ test('emits the current Draft as the Collaborator types', async ({ mount }) => {
   await component.locator('[name="headline"]').fill('Fresher');
 
   // Events cross from the browser to the test asynchronously, so wait for the last one.
-  await expect.poll(() => drafts.at(-1)).toEqual({
-    name: 'Spring',
-    headline: 'Fresher',
-    body: 'Buy now',
-    cta: 'Shop',
-    imageUrl: '',
-  });
+  await expect
+    .poll(() => drafts.at(-1))
+    .toEqual({
+      name: 'Spring',
+      headline: 'Fresher',
+      body: 'Buy now',
+      cta: 'Shop',
+      imageUrl: '',
+    });
 });
 
 test('emits the Draft on submit', async ({ mount }) => {
@@ -75,7 +77,7 @@ test('is read-only for a Viewer: fields are locked and there is no Save', async 
   await expect(component.getByRole('button', { name: 'Save' })).toHaveCount(0);
 });
 
-test('shows the server message for a rejected field',async ({ mount }) => {
+test('shows the server message for a rejected field', async ({ mount }) => {
   const component = await mount(CreativeForm, {
     props: { creative, fieldErrors: { headline: ['Headline is too long'] } },
   });
@@ -83,7 +85,9 @@ test('shows the server message for a rejected field',async ({ mount }) => {
   await expect(component).toContainText('Headline is too long');
 });
 
-test('keeps the Draft when the same Creative is passed again, and resets for a different one', async ({ mount }) => {
+test('keeps the Draft when the same Creative is passed again, and resets for a different one', async ({
+  mount,
+}) => {
   const component = await mount(CreativeForm, { props: { creative } });
   const headline = component.locator('[name="headline"]');
   await headline.fill('Typing');

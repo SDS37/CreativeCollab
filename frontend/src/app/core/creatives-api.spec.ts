@@ -29,7 +29,9 @@ describe('CreativesApi', () => {
 
   beforeEach(() => {
     localStorage.clear();
-    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
     api = TestBed.inject(CreativesApi);
     http = TestBed.inject(HttpTestingController);
   });

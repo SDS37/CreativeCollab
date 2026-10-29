@@ -10,7 +10,9 @@ async function fill(component: Locator, password = 'a long enough password') {
   await component.getByLabel('Password').fill(password);
 }
 
-test('asks for a Display name, an email and a password, and says how long the password must be', async ({ mount }) => {
+test('asks for a Display name, an email and a password, and says how long the password must be', async ({
+  mount,
+}) => {
   const component = await mount(RegisterPage);
   const submit = component.getByRole('button', { name: 'Create account' });
 
@@ -22,7 +24,10 @@ test('asks for a Display name, an email and a password, and says how long the pa
   await expect(submit).toBeEnabled();
 });
 
-test('registers, signs in because register does not, and opens the list', async ({ mount, page }) => {
+test('registers, signs in because register does not, and opens the list', async ({
+  mount,
+  page,
+}) => {
   let registered: unknown;
   let loggedIn: unknown;
   await answer(page, 'register', (route) => {
@@ -80,5 +85,8 @@ test('says so when the server cannot be reached', async ({ mount, page }) => {
 test('links back to sign in', async ({ mount }) => {
   const component = await mount(RegisterPage);
 
-  await expect(component.getByRole('link', { name: 'Sign in' })).toHaveAttribute('href', '/sign-in');
+  await expect(component.getByRole('link', { name: 'Sign in' })).toHaveAttribute(
+    'href',
+    '/sign-in',
+  );
 });

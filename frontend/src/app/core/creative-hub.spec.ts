@@ -274,7 +274,9 @@ describe('CreativeHubService', () => {
 
       const other = new Promise((resolve) => TestBed.inject(Session).refresh().subscribe(resolve));
       const pending = Promise.resolve(connection.accessTokenFactory());
-      http.expectOne(REFRESH_URL).flush({ accessToken: fakeAccessToken('Ada', 'Editor', 900), expiresIn: 900 });
+      http
+        .expectOne(REFRESH_URL)
+        .flush({ accessToken: fakeAccessToken('Ada', 'Editor', 900), expiresIn: 900 });
 
       expect(await pending).toBe(await other);
     });

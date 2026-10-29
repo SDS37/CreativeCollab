@@ -12,7 +12,13 @@ import { AuthError, Session } from '../../core/session';
     <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
       <h1>Create an account</h1>
       <label for="register-name">Display name</label>
-      <input id="register-name" type="text" formControlName="displayName" autocomplete="name" maxlength="100" />
+      <input
+        id="register-name"
+        type="text"
+        formControlName="displayName"
+        autocomplete="name"
+        maxlength="100"
+      />
       @for (message of fieldErrors()['displayName']; track message) {
         <p role="alert" class="error">{{ message }}</p>
       }
@@ -22,7 +28,12 @@ import { AuthError, Session } from '../../core/session';
         <p role="alert" class="error">{{ message }}</p>
       }
       <label for="register-password">Password</label>
-      <input id="register-password" type="password" formControlName="password" autocomplete="new-password" />
+      <input
+        id="register-password"
+        type="password"
+        formControlName="password"
+        autocomplete="new-password"
+      />
       <p class="hint">Use at least 12 characters. A passphrase works well.</p>
       @for (message of fieldErrors()['password']; track message) {
         <p role="alert" class="error">{{ message }}</p>
@@ -30,15 +41,32 @@ import { AuthError, Session } from '../../core/session';
       @if (error(); as message) {
         <p role="alert" class="error">{{ message }}</p>
       }
-      <button type="submit" [disabled]="!canSubmit()">{{ submitting() ? 'Creating…' : 'Create account' }}</button>
+      <button type="submit" [disabled]="!canSubmit()">
+        {{ submitting() ? 'Creating…' : 'Create account' }}
+      </button>
       <p>Already have an account? <a routerLink="/sign-in">Sign in</a></p>
     </form>
   `,
   styles: `
-    form { display: grid; gap: 0.5rem; max-width: 20rem; margin: 2rem auto; }
-    input { font: inherit; padding: 0.5rem; }
-    .error { color: #b00020; margin: 0; }
-    .hint { color: #555; margin: 0; font-size: 0.9em; }
+    form {
+      display: grid;
+      gap: 0.5rem;
+      max-width: 20rem;
+      margin: 2rem auto;
+    }
+    input {
+      font: inherit;
+      padding: 0.5rem;
+    }
+    .error {
+      color: #b00020;
+      margin: 0;
+    }
+    .hint {
+      color: #555;
+      margin: 0;
+      font-size: 0.9em;
+    }
   `,
 })
 export class RegisterPage {
@@ -69,7 +97,11 @@ export class RegisterPage {
     this.error.set(null);
     this.fieldErrors.set({});
     try {
-      await this.session.register({ displayName: displayName.trim(), email: email.trim(), password });
+      await this.session.register({
+        displayName: displayName.trim(),
+        email: email.trim(),
+        password,
+      });
       await this.router.navigateByUrl('/creatives');
     } catch (error) {
       if (error instanceof AuthError && Object.keys(error.fieldErrors).length > 0) {

@@ -1,4 +1,10 @@
-import { HttpErrorResponse, HttpEvent, HttpHandlerFn, HttpInterceptorFn, HttpRequest } from '@angular/common/http';
+import {
+  HttpErrorResponse,
+  HttpEvent,
+  HttpHandlerFn,
+  HttpInterceptorFn,
+  HttpRequest,
+} from '@angular/common/http';
 import { inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { catchError, Observable, switchMap, throwError } from 'rxjs';
@@ -39,7 +45,9 @@ export const authInterceptor: HttpInterceptorFn = (request, next) => {
   const sentWith = session.accessToken();
   const retry = (token: string): Observable<HttpEvent<unknown>> =>
     next(withBearer(request, token)).pipe(
-      catchError((error: unknown) => (isUnauthorized(error) ? fail(error) : throwError(() => error))),
+      catchError((error: unknown) =>
+        isUnauthorized(error) ? fail(error) : throwError(() => error),
+      ),
     );
   const fail = (error: unknown): Observable<never> => {
     session.clear();

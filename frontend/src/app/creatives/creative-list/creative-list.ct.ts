@@ -35,7 +35,9 @@ test('shows each Creative and reports the one the Collaborator opens', async ({ 
 });
 
 test('does not invent a Display name for a seeded Creative', async ({ mount }) => {
-  const component = await mount(CreativeList, { props: { creatives: [creative({ updatedBy: '' })] } });
+  const component = await mount(CreativeList, {
+    props: { creatives: [creative({ updatedBy: '' })] },
+  });
 
   await expect(component).toContainText('Version 1');
   await expect(component).not.toContainText('·');

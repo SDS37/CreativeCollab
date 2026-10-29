@@ -22,7 +22,9 @@ test('names who saved and keeps the Draft on screen', async ({ mount }) => {
 });
 
 test('says another Collaborator when the latest save has no Display name', async ({ mount }) => {
-  const component = await mount(ConflictBanner, { props: { conflict: { ...current, updatedBy: '' } } });
+  const component = await mount(ConflictBanner, {
+    props: { conflict: { ...current, updatedBy: '' } },
+  });
 
   await expect(component).toContainText('Another Collaborator saved a newer version');
 });

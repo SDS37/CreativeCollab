@@ -11,11 +11,15 @@ export class CreativesApi {
   private readonly http = inject(HttpClient);
 
   list(): Observable<Creative[]> {
-    return this.http.get<unknown>(CREATIVES_URL).pipe(map((body) => z.array(creativeSchema).parse(body)));
+    return this.http
+      .get<unknown>(CREATIVES_URL)
+      .pipe(map((body) => z.array(creativeSchema).parse(body)));
   }
 
   get(id: string): Observable<Creative> {
-    return this.http.get<unknown>(`${CREATIVES_URL}/${id}`).pipe(map((body) => creativeSchema.parse(body)));
+    return this.http
+      .get<unknown>(`${CREATIVES_URL}/${id}`)
+      .pipe(map((body) => creativeSchema.parse(body)));
   }
 
   create(fields: CreativeFields): Observable<Creative> {

@@ -39,14 +39,20 @@ describe('CreativeEditPage', () => {
   let router: Router;
   let hub: FakeHub;
 
-  async function setup(id: string | null, role = 'Editor'): Promise<ComponentFixture<CreativeEditPage>> {
+  async function setup(
+    id: string | null,
+    role = 'Editor',
+  ): Promise<ComponentFixture<CreativeEditPage>> {
     TestBed.configureTestingModule({
       providers: [
         provideHttpClient(),
         provideHttpClientTesting(),
         provideRouter([]),
         { provide: CreativeHubService, useFactory: () => (hub = new FakeHub()) },
-        { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap(id ? { id } : {})) } },
+        {
+          provide: ActivatedRoute,
+          useValue: { paramMap: of(convertToParamMap(id ? { id } : {})) },
+        },
       ],
     });
     http = TestBed.inject(HttpTestingController);
@@ -60,7 +66,9 @@ describe('CreativeEditPage', () => {
   }
 
   function field(fixture: ComponentFixture<unknown>, name: string): HTMLInputElement {
-    return (fixture.nativeElement as HTMLElement).querySelector(`[name="${name}"]`) as HTMLInputElement;
+    return (fixture.nativeElement as HTMLElement).querySelector(
+      `[name="${name}"]`,
+    ) as HTMLInputElement;
   }
 
   function type(fixture: ComponentFixture<unknown>, name: string, value: string): void {
@@ -70,7 +78,11 @@ describe('CreativeEditPage', () => {
   }
 
   function submit(fixture: ComponentFixture<unknown>): void {
-    ((fixture.nativeElement as HTMLElement).querySelector('button[type="submit"]') as HTMLButtonElement).click();
+    (
+      (fixture.nativeElement as HTMLElement).querySelector(
+        'button[type="submit"]',
+      ) as HTMLButtonElement
+    ).click();
   }
 
   afterEach(() => http.verify());
@@ -116,7 +128,9 @@ describe('CreativeEditPage', () => {
     await fixture.whenStable();
     expect(text(fixture)).toContain('Cannot reach the server');
 
-    ((fixture.nativeElement as HTMLElement).querySelector('button.retry') as HTMLButtonElement).click();
+    (
+      (fixture.nativeElement as HTMLElement).querySelector('button.retry') as HTMLButtonElement
+    ).click();
     http.expectOne(`${BASE}/3`).flush(creative);
   });
 
@@ -150,7 +164,10 @@ describe('CreativeEditPage', () => {
     submit(fixture);
     http
       .expectOne(`${BASE}/3`)
-      .flush({ errors: { Headline: ['Headline is too long'] } }, { status: 400, statusText: 'Bad Request' });
+      .flush(
+        { errors: { Headline: ['Headline is too long'] } },
+        { status: 400, statusText: 'Bad Request' },
+      );
     await fixture.whenStable();
 
     expect(text(fixture)).toContain('Headline is too long');
@@ -159,7 +176,13 @@ describe('CreativeEditPage', () => {
 
   describe('Conflict', () => {
     const conflictStatus = { status: 409, statusText: 'Conflict' };
-    const latest = { ...creative, version: 3, headline: 'Grace headline', body: 'Grace body', updatedBy: 'Grace' };
+    const latest = {
+      ...creative,
+      version: 3,
+      headline: 'Grace headline',
+      body: 'Grace body',
+      updatedBy: 'Grace',
+    };
 
     async function conflicted(): Promise<ComponentFixture<CreativeEditPage>> {
       const fixture = await setup('3');
@@ -318,7 +341,11 @@ describe('CreativeEditPage', () => {
       hub.updates.next(remote);
       await fixture.whenStable();
 
-      ((fixture.nativeElement as HTMLElement).querySelector('button.load-remote') as HTMLButtonElement).click();
+      (
+        (fixture.nativeElement as HTMLElement).querySelector(
+          'button.load-remote',
+        ) as HTMLButtonElement
+      ).click();
       await fixture.whenStable();
 
       expect(field(fixture, 'headline').value).toBe('Grace headline');
@@ -399,7 +426,9 @@ describe('CreativeEditPage', () => {
 
       expect(field(fixture, 'headline').value).toBe('Fresh');
       expect(field(fixture, 'headline').disabled).toBe(true);
-      expect((fixture.nativeElement as HTMLElement).querySelector('button[type="submit"]')).toBeNull();
+      expect(
+        (fixture.nativeElement as HTMLElement).querySelector('button[type="submit"]'),
+      ).toBeNull();
       expect(text(fixture)).toContain('read-only');
     });
 

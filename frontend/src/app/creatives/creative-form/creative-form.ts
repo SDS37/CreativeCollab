@@ -47,7 +47,9 @@ export class CreativeForm {
   protected readonly saveLabel = computed(() => (this.saving() ? 'Saving…' : 'Save'));
 
   protected readonly messages = computed(() =>
-    Object.fromEntries(Object.entries(this.fieldErrors()).map(([key, list]) => [key, list.join(' ')])),
+    Object.fromEntries(
+      Object.entries(this.fieldErrors()).map(([key, list]) => [key, list.join(' ')]),
+    ),
   );
 
   private readonly emitDraft = this.form.valueChanges.pipe(takeUntilDestroyed()).subscribe(() => {

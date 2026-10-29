@@ -50,7 +50,9 @@ describe('authInterceptor', () => {
   it('adds no token to a request to another origin', () => {
     http.get('https://example.com/data').subscribe();
 
-    expect(controller.expectOne('https://example.com/data').request.headers.has('Authorization')).toBe(false);
+    expect(
+      controller.expectOne('https://example.com/data').request.headers.has('Authorization'),
+    ).toBe(false);
   });
 
   it.each([
@@ -67,16 +69,25 @@ describe('authInterceptor', () => {
   });
 
   it('still adds the token to the API origin however the URL is written', () => {
-    for (const url of [API, `${API}?page=1`, 'http://LOCALHOST:5114/api/creatives', 'http://localhost:5114']) {
+    for (const url of [
+      API,
+      `${API}?page=1`,
+      'http://LOCALHOST:5114/api/creatives',
+      'http://localhost:5114',
+    ]) {
       http.get(url).subscribe({ error: () => {} });
-      expect(controller.expectOne(url).request.headers.get('Authorization')).toBe(`Bearer ${first}`);
+      expect(controller.expectOne(url).request.headers.get('Authorization')).toBe(
+        `Bearer ${first}`,
+      );
     }
   });
 
   it('does not send the token to the sign-in, register or refresh endpoints', () => {
     for (const path of ['sign-in', 'register', 'refresh']) {
       http.post(`${AUTH}/${path}`, {}).subscribe({ error: () => {} });
-      expect(controller.expectOne(`${AUTH}/${path}`).request.headers.has('Authorization')).toBe(false);
+      expect(controller.expectOne(`${AUTH}/${path}`).request.headers.has('Authorization')).toBe(
+        false,
+      );
     }
   });
 

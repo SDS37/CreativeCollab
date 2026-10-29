@@ -22,7 +22,10 @@ function creative(id: number, name: string): Creative {
   };
 }
 
-test('shows loading, then the Creatives in the order the API returned them', async ({ mount, page }) => {
+test('shows loading, then the Creatives in the order the API returned them', async ({
+  mount,
+  page,
+}) => {
   let respond!: () => void;
   const gate = new Promise<void>((resolve) => (respond = resolve));
   await page.route(API, async (route) => {
@@ -51,7 +54,9 @@ test('shows an error with a retry that reloads the list', async ({ mount, page }
   let calls = 0;
   await page.route(API, (route) => {
     calls++;
-    return calls === 1 ? route.abort() : route.fulfill({ json: [creative(1, 'First')], headers: cors });
+    return calls === 1
+      ? route.abort()
+      : route.fulfill({ json: [creative(1, 'First')], headers: cors });
   });
 
   const component = await mount(CreativeListPage);
@@ -67,7 +72,9 @@ async function signInAs(page: Page, role: string): Promise<void> {
   await answer(page, 'sign-in', (route) =>
     reply(route, 200, { accessToken: fakeAccessToken('Ada', role), expiresIn: 900 }),
   );
-  await page.evaluate(() => window.__pwSession?.signIn('ada@example.com', 'a long enough password'));
+  await page.evaluate(() =>
+    window.__pwSession?.signIn('ada@example.com', 'a long enough password'),
+  );
 }
 
 test('offers New Creative to an Editor', async ({ mount, page }) => {
@@ -78,7 +85,10 @@ test('offers New Creative to an Editor', async ({ mount, page }) => {
   await expect(component.getByRole('link', { name: 'New Creative' })).toBeVisible();
 });
 
-test('does not offer New Creative to a Viewer, who can still open Creatives', async ({ mount, page }) => {
+test('does not offer New Creative to a Viewer, who can still open Creatives', async ({
+  mount,
+  page,
+}) => {
   await page.route(API, (route) => route.fulfill({ json: [creative(4, 'Four')], headers: cors }));
   const component = await mount(CreativeListPage);
   await signInAs(page, 'Viewer');

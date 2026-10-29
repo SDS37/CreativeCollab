@@ -1,6 +1,15 @@
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { computed, inject, Service, signal } from '@angular/core';
-import { catchError, finalize, firstValueFrom, map, Observable, shareReplay, tap, throwError } from 'rxjs';
+import {
+  catchError,
+  finalize,
+  firstValueFrom,
+  map,
+  Observable,
+  shareReplay,
+  tap,
+  throwError,
+} from 'rxjs';
 import * as z from 'zod';
 import { AUTH_URL } from './api-config';
 
@@ -10,7 +19,8 @@ export type Role = 'Viewer' | 'Editor' | 'Admin';
 const ROLE_RANK: Record<Role, number> = { Viewer: 0, Editor: 1, Admin: 2 };
 
 /** The rank of a role name from a token, or -1 for a name this app does not know. */
-const rankOf = (role: string): number => (Object.hasOwn(ROLE_RANK, role) ? ROLE_RANK[role as Role] : -1);
+const rankOf = (role: string): number =>
+  Object.hasOwn(ROLE_RANK, role) ? ROLE_RANK[role as Role] : -1;
 
 /** A token this close to expiring is renewed before it is used, so it does not lapse in flight. */
 const EXPIRY_MARGIN_SECONDS = 30;
@@ -72,7 +82,11 @@ export class Session {
   async signIn(email: string, password: string): Promise<void> {
     try {
       const response = await firstValueFrom(
-        this.http.post<unknown>(`${AUTH_URL}/sign-in`, { email, password }, { withCredentials: true }),
+        this.http.post<unknown>(
+          `${AUTH_URL}/sign-in`,
+          { email, password },
+          { withCredentials: true },
+        ),
       );
       this.token.set(accessTokenResponse.parse(response).accessToken);
     } catch (error) {

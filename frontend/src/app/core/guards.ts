@@ -11,9 +11,7 @@ import { signInUrl } from './sign-in-redirect';
 /** Signed-in Collaborators only. Others go to sign-in and come back to the page they wanted. */
 export const authGuard: CanActivateFn = (_route, state) => {
   const router = inject(Router);
-  return inject(Session).isSignedIn()
-    ? true
-    : signInUrl(router, state.url);
+  return inject(Session).isSignedIn() ? true : signInUrl(router, state.url);
 };
 
 /** Collaborators with at least this role. A signed-in Collaborator without it goes to the list. */

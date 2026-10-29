@@ -13,7 +13,9 @@ describe('app wiring', () => {
   let http: HttpTestingController;
 
   beforeEach(() => {
-    TestBed.configureTestingModule({ providers: [...appConfig.providers, provideHttpClientTesting()] });
+    TestBed.configureTestingModule({
+      providers: [...appConfig.providers, provideHttpClientTesting()],
+    });
     http = TestBed.inject(HttpTestingController);
   });
 

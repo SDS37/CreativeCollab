@@ -53,8 +53,12 @@ export class CreativeEditPage {
   });
 
   /** The form is hidden while the Creative loads or when it could not be loaded. */
-  protected readonly loadFailed = computed(() => this.id() !== null && this.store.error() !== null && this.store.selected() === null);
-  protected readonly canRetry = computed(() => this.loadFailed() && this.store.error()?.kind !== 'not-found');
+  protected readonly loadFailed = computed(
+    () => this.id() !== null && this.store.error() !== null && this.store.selected() === null,
+  );
+  protected readonly canRetry = computed(
+    () => this.loadFailed() && this.store.error()?.kind !== 'not-found',
+  );
   protected readonly showForm = computed(() => !this.store.loading() && !this.loadFailed());
   protected readonly fieldErrors = computed(() => this.store.error()?.fieldErrors ?? {});
 
@@ -62,16 +66,18 @@ export class CreativeEditPage {
   protected readonly openSessions = computed(() => this.hub.presence());
   protected readonly liveUpdatesUnavailable = computed(() => this.hub.unavailable());
 
-  private readonly followRoute = this.route.paramMap.pipe(takeUntilDestroyed()).subscribe((params) => {
-    const id = params.get('id');
-    this.id.set(id);
-    this.load();
-    if (id === null) {
-      void this.hub.leave();
-    } else {
-      void this.hub.join(id);
-    }
-  });
+  private readonly followRoute = this.route.paramMap
+    .pipe(takeUntilDestroyed())
+    .subscribe((params) => {
+      const id = params.get('id');
+      this.id.set(id);
+      this.load();
+      if (id === null) {
+        void this.hub.leave();
+      } else {
+        void this.hub.join(id);
+      }
+    });
 
   private readonly followUpdates = this.hub.updated
     .pipe(takeUntilDestroyed())

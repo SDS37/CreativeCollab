@@ -10,7 +10,14 @@ const BASE = 'http://localhost:5114/api/creatives';
 const fields: CreativeFields = { name: 'n', headline: 'h', body: 'b', cta: 'c', imageUrl: '' };
 
 function creative(id: number, version = 1): Creative {
-  return { id: String(id), ...fields, imageUrl: null, version, updatedAt: '2026-01-01T00:00:00Z', updatedBy: 'Ada' };
+  return {
+    id: String(id),
+    ...fields,
+    imageUrl: null,
+    version,
+    updatedAt: '2026-01-01T00:00:00Z',
+    updatedBy: 'Ada',
+  };
 }
 
 describe('CreativeSignalStore', () => {
@@ -18,7 +25,9 @@ describe('CreativeSignalStore', () => {
   let http: HttpTestingController;
 
   beforeEach(async () => {
-    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
     http = TestBed.inject(HttpTestingController);
     await signInAs('Ada');
     store = TestBed.inject(CreativeSignalStore);
@@ -100,10 +109,12 @@ describe('CreativeSignalStore', () => {
 
     it('turns a 400 into field messages keyed by camelCase field name', async () => {
       const result = store.create(fields);
-      http.expectOne(BASE).flush(
-        { title: 'Validation', errors: { Headline: ['Too long'], Cta: ['Required'] } },
-        { status: 400, statusText: 'Bad Request' },
-      );
+      http
+        .expectOne(BASE)
+        .flush(
+          { title: 'Validation', errors: { Headline: ['Too long'], Cta: ['Required'] } },
+          { status: 400, statusText: 'Bad Request' },
+        );
 
       expect(await result).toBeNull();
       expect(store.saving()).toBe(false);
@@ -187,7 +198,9 @@ describe('CreativeSignalStore', () => {
     it('a second Conflict during keepMyEdits replaces the Conflict and still rebases from the original base', async () => {
       openLoaded();
       const first = store.update('1', fields, 1);
-      http.expectOne(`${BASE}/1`).flush(conflictBody({ ...creative(1, 2), body: 'v2' }), conflictStatus);
+      http
+        .expectOne(`${BASE}/1`)
+        .flush(conflictBody({ ...creative(1, 2), body: 'v2' }), conflictStatus);
       await first;
 
       const draft = { ...fields, headline: 'Mine-base', cta: 'My cta' };
@@ -304,14 +317,18 @@ describe('CreativeSignalStore', () => {
       store.receiveUpdate(remote(2, 'Grace'), true);
 
       expect(store.remoteUpdate()?.version).toBe(2);
-      http.expectOne(`${BASE}/1`).flush({ current: remote(2, 'Grace') }, { status: 409, statusText: 'Conflict' });
+      http
+        .expectOne(`${BASE}/1`)
+        .flush({ current: remote(2, 'Grace') }, { status: 409, statusText: 'Conflict' });
       await saving;
     });
 
     it('lets a Conflict show the newest copy rather than a second prompt', async () => {
       openLoaded();
       const saving = store.update('1', fields, 1);
-      http.expectOne(`${BASE}/1`).flush({ current: remote(2) }, { status: 409, statusText: 'Conflict' });
+      http
+        .expectOne(`${BASE}/1`)
+        .flush({ current: remote(2) }, { status: 409, statusText: 'Conflict' });
       await saving;
 
       store.receiveUpdate(remote(3, 'Linus'), true);
@@ -325,7 +342,9 @@ describe('CreativeSignalStore', () => {
       openLoaded();
       store.receiveUpdate(remote(2), true);
       const saving = store.update('1', fields, 1);
-      http.expectOne(`${BASE}/1`).flush({ current: remote(2) }, { status: 409, statusText: 'Conflict' });
+      http
+        .expectOne(`${BASE}/1`)
+        .flush({ current: remote(2) }, { status: 409, statusText: 'Conflict' });
       await saving;
 
       expect(store.conflict()?.version).toBe(2);

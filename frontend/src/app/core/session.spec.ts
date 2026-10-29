@@ -46,7 +46,10 @@ describe('Session', () => {
       const req = http.expectOne(`${AUTH}/sign-in`);
       expect(req.request.method).toBe('POST');
       expect(req.request.withCredentials).toBe(true);
-      expect(req.request.body).toEqual({ email: 'ada@example.com', password: 'a long enough password' });
+      expect(req.request.body).toEqual({
+        email: 'ada@example.com',
+        password: 'a long enough password',
+      });
       req.flush(token('Ada Lovelace', 'Editor'));
       await done;
 
@@ -72,7 +75,10 @@ describe('Session', () => {
       const done = session.signIn('ada@example.com', 'wrong');
       http
         .expectOne(`${AUTH}/sign-in`)
-        .flush({ title: 'Unauthorized', detail: 'Invalid email or password.' }, { status: 401, statusText: 'Unauthorized' });
+        .flush(
+          { title: 'Unauthorized', detail: 'Invalid email or password.' },
+          { status: 401, statusText: 'Unauthorized' },
+        );
 
       await expect(done).rejects.toMatchObject({ message: 'Invalid email or password.' });
       expect(session.isSignedIn()).toBe(false);
@@ -82,10 +88,17 @@ describe('Session', () => {
       const done = session.signIn('ada@example.com', 'wrong');
       http
         .expectOne(`${AUTH}/sign-in`)
-        .flush({ detail: 'This account is locked after too many failed sign-ins. Please try again in 15 minutes.' }, { status: 423, statusText: 'Locked' });
+        .flush(
+          {
+            detail:
+              'This account is locked after too many failed sign-ins. Please try again in 15 minutes.',
+          },
+          { status: 423, statusText: 'Locked' },
+        );
 
       await expect(done).rejects.toMatchObject({
-        message: 'This account is locked after too many failed sign-ins. Please try again in 15 minutes.',
+        message:
+          'This account is locked after too many failed sign-ins. Please try again in 15 minutes.',
       });
     });
 
@@ -93,14 +106,20 @@ describe('Session', () => {
       const done = session.signIn('ada@example.com', 'x');
       http.expectOne(`${AUTH}/sign-in`).error(new ProgressEvent('error'));
 
-      await expect(done).rejects.toMatchObject({ message: expect.stringContaining('Cannot reach the server') });
+      await expect(done).rejects.toMatchObject({
+        message: expect.stringContaining('Cannot reach the server'),
+      });
     });
 
     it('says to slow down when rate limited', async () => {
       const done = session.signIn('ada@example.com', 'x');
-      http.expectOne(`${AUTH}/sign-in`).flush(null, { status: 429, statusText: 'Too Many Requests' });
+      http
+        .expectOne(`${AUTH}/sign-in`)
+        .flush(null, { status: 429, statusText: 'Too Many Requests' });
 
-      await expect(done).rejects.toMatchObject({ message: expect.stringContaining('Too many attempts') });
+      await expect(done).rejects.toMatchObject({
+        message: expect.stringContaining('Too many attempts'),
+      });
     });
   });
 
@@ -133,7 +152,11 @@ describe('Session', () => {
 
   describe('register', () => {
     it('creates the account, then signs in because register does not', async () => {
-      const done = session.register({ email: 'ada@example.com', password: 'a long enough password', displayName: 'Ada' });
+      const done = session.register({
+        email: 'ada@example.com',
+        password: 'a long enough password',
+        displayName: 'Ada',
+      });
       const create = http.expectOne(`${AUTH}/register`);
       expect(create.request.body).toEqual({
         email: 'ada@example.com',
@@ -150,16 +173,28 @@ describe('Session', () => {
     });
 
     it('reports field messages from a 400 and does not sign in', async () => {
-      const done = session.register({ email: 'ada@example.com', password: 'short', displayName: 'Ada' });
+      const done = session.register({
+        email: 'ada@example.com',
+        password: 'short',
+        displayName: 'Ada',
+      });
       http
         .expectOne(`${AUTH}/register`)
         .flush(
-          { errors: { password: ['Passwords must be at least 12 characters.'], email: ['Email is taken.'] } },
+          {
+            errors: {
+              password: ['Passwords must be at least 12 characters.'],
+              email: ['Email is taken.'],
+            },
+          },
           { status: 400, statusText: 'Bad Request' },
         );
 
       await expect(done).rejects.toMatchObject({
-        fieldErrors: { password: ['Passwords must be at least 12 characters.'], email: ['Email is taken.'] },
+        fieldErrors: {
+          password: ['Passwords must be at least 12 characters.'],
+          email: ['Email is taken.'],
+        },
       });
       expect(session.isSignedIn()).toBe(false);
     });

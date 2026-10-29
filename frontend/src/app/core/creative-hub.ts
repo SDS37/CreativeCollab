@@ -11,11 +11,17 @@ import { Session } from './session';
  */
 export type HubConnectionFactory = (accessTokenFactory: () => Promise<string>) => HubConnection;
 
-export const HUB_CONNECTION_FACTORY = new InjectionToken<HubConnectionFactory>('HUB_CONNECTION_FACTORY', {
-  providedIn: 'root',
-  factory: () => (accessTokenFactory) =>
-    new HubConnectionBuilder().withUrl(HUB_URL, { accessTokenFactory }).withAutomaticReconnect().build(),
-});
+export const HUB_CONNECTION_FACTORY = new InjectionToken<HubConnectionFactory>(
+  'HUB_CONNECTION_FACTORY',
+  {
+    providedIn: 'root',
+    factory: () => (accessTokenFactory) =>
+      new HubConnectionBuilder()
+        .withUrl(HUB_URL, { accessTokenFactory })
+        .withAutomaticReconnect()
+        .build(),
+  },
+);
 
 interface Group {
   id: string;
@@ -106,7 +112,9 @@ export class CreativeHubService {
         this.updates.next(parsed.data);
       }
     });
-    connection.on('UserJoined', (name: string) => this.presenceState.update((names) => [...names, name]));
+    connection.on('UserJoined', (name: string) =>
+      this.presenceState.update((names) => [...names, name]),
+    );
     connection.on('UserLeft', (name: string) =>
       this.presenceState.update((names) => {
         const index = names.indexOf(name);

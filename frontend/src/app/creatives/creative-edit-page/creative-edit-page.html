@@ -10,11 +10,15 @@
   <app-presence-bar [names]="openSessions()" />
 }
 @if (liveUpdatesUnavailable()) {
-  <p class="live-off" role="status">Live updates are unavailable. Changes by others will not appear until you reload.</p>
+  <p class="live-off" role="status">
+    Live updates are unavailable. Changes by others will not appear until you reload.
+  </p>
 }
 
 @if (readOnly()) {
-  <p class="read-only" role="status">This Creative is read-only for your role. You still see live updates and who has it open.</p>
+  <p class="read-only" role="status">
+    This Creative is read-only for your role. You still see live updates and who has it open.
+  </p>
 }
 
 @if (store.loading()) {

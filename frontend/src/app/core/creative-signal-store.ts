@@ -149,7 +149,11 @@ export const CreativeSignalStore = signalStore(
           return;
         }
         const conflict = store.conflict();
-        const known = Math.max(selected.version, store.remoteUpdate()?.version ?? 0, conflict?.version ?? 0);
+        const known = Math.max(
+          selected.version,
+          store.remoteUpdate()?.version ?? 0,
+          conflict?.version ?? 0,
+        );
         if (incoming.version <= known) {
           return;
         }
@@ -208,13 +212,20 @@ function toApiError(error: unknown): ApiError {
         fieldErrors: toFieldErrors(error.error),
       };
     default:
-      return { kind: 'server', message: 'The server could not complete the request.', fieldErrors: {} };
+      return {
+        kind: 'server',
+        message: 'The server could not complete the request.',
+        fieldErrors: {},
+      };
   }
 }
 
 function toFieldErrors(body: unknown): Record<string, string[]> {
   const errors = (body as { errors?: Record<string, string[]> } | null)?.errors ?? {};
   return Object.fromEntries(
-    Object.entries(errors).map(([key, messages]) => [key.charAt(0).toLowerCase() + key.slice(1), messages]),
+    Object.entries(errors).map(([key, messages]) => [
+      key.charAt(0).toLowerCase() + key.slice(1),
+      messages,
+    ]),
   );
 }

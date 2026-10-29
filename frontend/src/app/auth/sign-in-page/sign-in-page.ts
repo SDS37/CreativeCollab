@@ -8,7 +8,10 @@ import { AuthError, Session } from '../../core/session';
 /** Where to go after sign-in: the page the Collaborator wanted, if it is inside the app. */
 function destination(router: Router): string {
   const wanted = router.parseUrl(router.url).queryParams['returnUrl'];
-  return typeof wanted === 'string' && wanted.startsWith('/') && !wanted.startsWith('//') && !wanted.includes('\\')
+  return typeof wanted === 'string' &&
+    wanted.startsWith('/') &&
+    !wanted.startsWith('//') &&
+    !wanted.includes('\\')
     ? wanted
     : '/creatives';
 }
@@ -22,18 +25,36 @@ function destination(router: Router): string {
       <label for="sign-in-email">Email</label>
       <input id="sign-in-email" type="email" formControlName="email" autocomplete="username" />
       <label for="sign-in-password">Password</label>
-      <input id="sign-in-password" type="password" formControlName="password" autocomplete="current-password" />
+      <input
+        id="sign-in-password"
+        type="password"
+        formControlName="password"
+        autocomplete="current-password"
+      />
       @if (error(); as message) {
         <p role="alert" class="error">{{ message }}</p>
       }
-      <button type="submit" [disabled]="!canSubmit()">{{ submitting() ? 'Signing in…' : 'Sign in' }}</button>
+      <button type="submit" [disabled]="!canSubmit()">
+        {{ submitting() ? 'Signing in…' : 'Sign in' }}
+      </button>
       <p>No account yet? <a routerLink="/register">Create an account</a></p>
     </form>
   `,
   styles: `
-    form { display: grid; gap: 0.5rem; max-width: 20rem; margin: 2rem auto; }
-    input { font: inherit; padding: 0.5rem; }
-    .error { color: #b00020; margin: 0; }
+    form {
+      display: grid;
+      gap: 0.5rem;
+      max-width: 20rem;
+      margin: 2rem auto;
+    }
+    input {
+      font: inherit;
+      padding: 0.5rem;
+    }
+    .error {
+      color: #b00020;
+      margin: 0;
+    }
   `,
 })
 export class SignInPage {
