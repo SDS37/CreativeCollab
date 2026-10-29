@@ -14,7 +14,7 @@ public sealed class TokenService(IOptions<JwtOptions> options, TimeProvider time
     public TimeSpan AccessTokenLifetime => TimeSpan.FromMinutes(_jwt.AccessTokenMinutes);
     public TimeSpan RefreshTokenLifetime => TimeSpan.FromDays(_jwt.RefreshTokenDays);
 
-    public string CreateAccessToken(AppUser user, IEnumerable<string> roles)
+    public string CreateAccessToken(AppUser account, IEnumerable<string> roles)
     {
         var now = time.GetUtcNow().UtcDateTime;
         var roleList = roles.ToArray();
@@ -28,8 +28,8 @@ public sealed class TokenService(IOptions<JwtOptions> options, TimeProvider time
             SigningCredentials = new SigningCredentials(JwtBearerSetup.SigningKey(_jwt), SecurityAlgorithms.HmacSha256),
             Claims = new Dictionary<string, object>
             {
-                [AccountClaims.Subject] = user.Id,
-                [AccountClaims.Name] = user.DisplayName,
+                [AccountClaims.Subject] = account.Id,
+                [AccountClaims.Name] = account.DisplayName,
                 [AccountClaims.TokenId] = Guid.NewGuid().ToString("N"),
                 [AccountClaims.Role] = roleList.Length == 1 ? roleList[0] : roleList,
             },

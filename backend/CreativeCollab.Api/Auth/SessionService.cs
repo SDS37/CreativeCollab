@@ -16,10 +16,10 @@ public sealed class SessionService(CreativeDbContext db, TokenService tokens, Us
     /// <summary>Rows this long past expiry, or this long since revocation, are deleted. Opportunistic: it runs on sign-in and refresh.</summary>
     public static readonly TimeSpan Retention = TimeSpan.FromDays(7);
 
-    public async Task<IssuedSession> StartAsync(AppUser user, CancellationToken ct)
+    public async Task<IssuedSession> StartAsync(AppUser account, CancellationToken ct)
     {
         await PurgeAsync(ct);
-        return await IssueAsync(user, familyId: Guid.NewGuid(), ct);
+        return await IssueAsync(account, familyId: Guid.NewGuid(), ct);
     }
 
     private async Task PurgeAsync(CancellationToken ct)
@@ -58,14 +58,14 @@ public sealed class SessionService(CreativeDbContext db, TokenService tokens, Us
             return null;
         }
 
-        var user = await users.FindByIdAsync(presented.UserId);
-        if (user is null || await users.IsLockedOutAsync(user))
+        var account = await users.FindByIdAsync(presented.UserId);
+        if (account is null || await users.IsLockedOutAsync(account))
         {
             await RevokeFamilyAsync(presented.FamilyId, ct);
             return null;
         }
 
-        return await IssueAsync(user, presented.FamilyId, ct);
+        return await IssueAsync(account, presented.FamilyId, ct);
     }
 
     /// <summary>Revokes the Session the presented refresh token belongs to, if any.</summary>
@@ -75,15 +75,15 @@ public sealed class SessionService(CreativeDbContext db, TokenService tokens, Us
             await RevokeFamilyAsync(presented.FamilyId, ct);
     }
 
-    private async Task<IssuedSession> IssueAsync(AppUser user, Guid familyId, CancellationToken ct)
+    private async Task<IssuedSession> IssueAsync(AppUser account, Guid familyId, CancellationToken ct)
     {
         var (token, hash) = TokenService.NewRefreshToken();
         var expires = time.GetUtcNow() + tokens.RefreshTokenLifetime;
-        db.RefreshTokens.Add(new RefreshToken { Id = Guid.NewGuid(), UserId = user.Id, FamilyId = familyId, TokenHash = hash, ExpiresAt = expires });
+        db.RefreshTokens.Add(new RefreshToken { Id = Guid.NewGuid(), UserId = account.Id, FamilyId = familyId, TokenHash = hash, ExpiresAt = expires });
         await db.SaveChangesAsync(ct);
 
         // Roles are read now, so a role change takes effect the next time the session renews.
-        var access = tokens.CreateAccessToken(user, await users.GetRolesAsync(user));
+        var access = tokens.CreateAccessToken(account, await users.GetRolesAsync(account));
         return new IssuedSession(new AccessTokenResponse(access, (int)tokens.AccessTokenLifetime.TotalSeconds), token, expires);
     }
 

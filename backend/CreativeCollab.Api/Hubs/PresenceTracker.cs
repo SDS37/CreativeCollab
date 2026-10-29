@@ -12,15 +12,15 @@ public sealed class PresenceTracker
     private readonly ConcurrentDictionary<string, ConcurrentDictionary<Guid, string>> _connections = new();
 
     /// <summary>Returns false when this connection was already present on the Creative.</summary>
-    public bool Join(string connectionId, Guid creativeId, string userName) =>
-        _connections.GetOrAdd(connectionId, _ => new()).TryAdd(creativeId, userName);
+    public bool Join(string connectionId, Guid creativeId, string accountName) =>
+        _connections.GetOrAdd(connectionId, _ => new()).TryAdd(creativeId, accountName);
 
     /// <summary>Returns the Display name the connection had on the Creative, or null if it was not present.</summary>
     public string? Leave(string connectionId, Guid creativeId) =>
         _connections.TryGetValue(connectionId, out var joined) && joined.TryRemove(creativeId, out var name) ? name : null;
 
     /// <summary>Forgets the connection and returns every Creative it was present on.</summary>
-    public IReadOnlyList<(Guid CreativeId, string UserName)> Disconnect(string connectionId) =>
+    public IReadOnlyList<(Guid CreativeId, string AccountName)> Disconnect(string connectionId) =>
         _connections.TryRemove(connectionId, out var joined)
             ? [.. joined.Select(j => (j.Key, j.Value))]
             : [];

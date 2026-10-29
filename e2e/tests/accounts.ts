@@ -45,7 +45,7 @@ export async function setRole(
   const response = await request.post(`${API}/auth/sign-in`, { data: { email: ADMIN.email, password: ADMIN.password } });
   expect(response.ok(), 'the seeded Admin can sign in').toBe(true);
   const { accessToken } = (await response.json()) as { accessToken: string };
-  const changed = await request.put(`${API}/admin/users/${account.id}/role`, {
+  const changed = await request.put(`${API}/admin/accounts/${account.id}/role`, {
     data: { role },
     headers: { Authorization: `Bearer ${accessToken}` },
   });

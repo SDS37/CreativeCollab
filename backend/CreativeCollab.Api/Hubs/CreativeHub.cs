@@ -24,14 +24,14 @@ public sealed class CreativeHub(PresenceTracker presence) : Hub
     public async Task<string[]> JoinCreative(Guid creativeId)
     {
         // The name is the account's, from the signed token. The client has no say in it.
-        var userName = AccountClaims.NameOf(Context.User)
+        var accountName = AccountClaims.NameOf(Context.User)
             ?? throw new HubException("The token has no name.");
 
         var group = GroupName(creativeId);
-        var added = presence.Join(Context.ConnectionId, creativeId, userName);
+        var added = presence.Join(Context.ConnectionId, creativeId, accountName);
         await Groups.AddToGroupAsync(Context.ConnectionId, group, Context.ConnectionAborted);
         if (added)
-            await Clients.OthersInGroup(group).SendAsync(Events.UserJoined, userName);
+            await Clients.OthersInGroup(group).SendAsync(Events.UserJoined, accountName);
 
         return [.. presence.Present(creativeId)];
     }
@@ -40,14 +40,14 @@ public sealed class CreativeHub(PresenceTracker presence) : Hub
     {
         var group = GroupName(creativeId);
         await Groups.RemoveFromGroupAsync(Context.ConnectionId, group, Context.ConnectionAborted);
-        if (presence.Leave(Context.ConnectionId, creativeId) is { } userName)
-            await Clients.OthersInGroup(group).SendAsync(Events.UserLeft, userName);
+        if (presence.Leave(Context.ConnectionId, creativeId) is { } accountName)
+            await Clients.OthersInGroup(group).SendAsync(Events.UserLeft, accountName);
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)
     {
-        foreach (var (creativeId, userName) in presence.Disconnect(Context.ConnectionId))
-            await Clients.OthersInGroup(GroupName(creativeId)).SendAsync(Events.UserLeft, userName);
+        foreach (var (creativeId, accountName) in presence.Disconnect(Context.ConnectionId))
+            await Clients.OthersInGroup(GroupName(creativeId)).SendAsync(Events.UserLeft, accountName);
 
         await base.OnDisconnectedAsync(exception);
     }

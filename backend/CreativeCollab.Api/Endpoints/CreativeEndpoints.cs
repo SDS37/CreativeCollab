@@ -18,9 +18,9 @@ public static class CreativeEndpoints
         group.MapGet("/{id:guid}", async (Guid id, CreativeService service, CancellationToken ct) =>
             await service.GetAsync(id, ct) is { } creative ? Results.Ok(creative) : Results.NotFound()).RequireAuthorization(Policies.CanRead);
 
-        group.MapPost("/", async (CreateCreativeRequest request, ClaimsPrincipal user, CreativeService service, CancellationToken ct) =>
+        group.MapPost("/", async (CreateCreativeRequest request, ClaimsPrincipal principal, CreativeService service, CancellationToken ct) =>
         {
-            return await service.CreateAsync(request, AccountName(user), ct) switch
+            return await service.CreateAsync(request, AccountName(principal), ct) switch
             {
                 CreateResult.Created c => Results.Created($"/api/creatives/{c.Creative.Id}", c.Creative),
                 CreateResult.InvalidImage i => ImageProblem(i.Message),
@@ -28,8 +28,8 @@ public static class CreativeEndpoints
             };
         }).AddEndpointFilter<ValidationFilter<CreateCreativeRequest>>().RequireAuthorization(Policies.CanEdit);
 
-        group.MapPut("/{id:guid}", async (Guid id, UpdateCreativeRequest request, ClaimsPrincipal user, CreativeService service, CancellationToken ct) =>
-            await service.UpdateAsync(id, request, AccountName(user), ct) switch
+        group.MapPut("/{id:guid}", async (Guid id, UpdateCreativeRequest request, ClaimsPrincipal principal, CreativeService service, CancellationToken ct) =>
+            await service.UpdateAsync(id, request, AccountName(principal), ct) switch
             {
                 UpdateResult.Updated u => Results.Ok(u.Creative),
                 UpdateResult.Conflict c => ConflictResult(c.Current),
@@ -41,8 +41,8 @@ public static class CreativeEndpoints
     }
 
     /// <summary>Who is acting, attested by the signed token. Never taken from the request body.</summary>
-    private static string AccountName(ClaimsPrincipal user) =>
-        AccountClaims.NameOf(user) ?? throw new InvalidOperationException("An authorized token always carries a name.");
+    private static string AccountName(ClaimsPrincipal principal) =>
+        AccountClaims.NameOf(principal) ?? throw new InvalidOperationException("An authorized token always carries a name.");
 
     private static IResult ImageProblem(string message) =>
         Results.ValidationProblem(new Dictionary<string, string[]> { ["imageUrl"] = [message] });

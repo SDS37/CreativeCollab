@@ -10,7 +10,7 @@ public static class AdminEndpoints
     {
         var group = app.MapGroup("/api/admin").RequireAuthorization(Policies.CanAdminister);
 
-        group.MapPut("/users/{id}/role", async (string id, ChangeRoleRequest request, RoleService roles) =>
+        group.MapPut("/accounts/{id}/role", async (string id, ChangeRoleRequest request, RoleService roles) =>
         {
             if (AccountRole.Parse(request.Role) is not { } role)
                 return Results.ValidationProblem(new Dictionary<string, string[]> { ["role"] = [AccountRole.Expected] });

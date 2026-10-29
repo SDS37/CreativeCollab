@@ -43,9 +43,9 @@ public sealed class RoleAdminTests : IDisposable
 
     private static string NewEmail() => $"{Guid.NewGuid():N}@example.com";
 
-    private static Task<HttpResponseMessage> ChangeRoleAsync(HttpClient client, string? userId, string role, string? token)
+    private static Task<HttpResponseMessage> ChangeRoleAsync(HttpClient client, string? accountId, string role, string? token)
     {
-        var request = new HttpRequestMessage(HttpMethod.Put, $"/api/admin/users/{userId}/role") { Content = JsonContent.Create(new { role }) };
+        var request = new HttpRequestMessage(HttpMethod.Put, $"/api/admin/accounts/{accountId}/role") { Content = JsonContent.Create(new { role }) };
         if (token is not null) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         return client.SendAsync(request);
     }

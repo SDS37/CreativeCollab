@@ -43,8 +43,8 @@ internal static class TestAccounts
         using (var scope = host.Services.CreateScope())
         {
             var users = scope.ServiceProvider.GetRequiredService<UserManager<AppUser>>();
-            var user = (await users.FindByIdAsync(id))!;
-            await users.RemoveFromRolesAsync(user, await users.GetRolesAsync(user));
+            var account = (await users.FindByIdAsync(id))!;
+            await users.RemoveFromRolesAsync(account, await users.GetRolesAsync(account));
         }
         return await RegisterAndSignInAsync(client, email, id, name);
     }
@@ -67,7 +67,7 @@ internal static class TestAccounts
         var admin = host.CreateClient();
         var token = (await AuthClient.ReadSessionAsync(await admin.SignInAsync(ApiFactory.AdminEmail))).AccessToken;
         admin.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        var changed = await admin.PutAsJsonAsync($"/api/admin/users/{id}/role", new { role });
+        var changed = await admin.PutAsJsonAsync($"/api/admin/accounts/{id}/role", new { role });
         Assert.Equal(HttpStatusCode.NoContent, changed.StatusCode);
     }
 }
