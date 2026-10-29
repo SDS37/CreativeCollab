@@ -41,6 +41,17 @@ public static class AuthEndpoints
             return Results.Ok(await sessions.StartAsync(user, http));
         });
 
+        group.MapPost("/refresh", async (SessionService sessions, HttpContext http) =>
+            await sessions.RefreshAsync(http) is { } renewed
+                ? Results.Ok(renewed)
+                : Results.Problem(title: "Unauthorized", detail: "Please sign in again.", statusCode: StatusCodes.Status401Unauthorized));
+
+        group.MapPost("/logout", async (SessionService sessions, HttpContext http) =>
+        {
+            await sessions.EndAsync(http);
+            return Results.NoContent();
+        });
+
         group.MapGet("/me", (ClaimsPrincipal principal) => Results.Ok(new
         {
             sub = principal.FindFirstValue("sub"),
