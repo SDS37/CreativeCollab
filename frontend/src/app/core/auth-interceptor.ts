@@ -5,8 +5,11 @@ import { catchError, Observable, switchMap, throwError } from 'rxjs';
 import { API_ORIGIN, AUTH_URL } from './api-config';
 import { Session } from './session';
 
-/** These answer 401 for their own reasons (wrong password, no cookie), so they are never renewed or retried. */
-const ANONYMOUS = ['login', 'register', 'refresh'].map((name) => `${AUTH_URL}/${name}`);
+/**
+ * These answer 401 for their own reasons (wrong password, no cookie) or need no token (logout works from the
+ * refresh cookie alone), so they get no bearer and are never renewed or retried.
+ */
+const ANONYMOUS = ['login', 'register', 'refresh', 'logout'].map((name) => `${AUTH_URL}/${name}`);
 
 const withBearer = (request: HttpRequest<unknown>, token: string | null) =>
   token === null ? request : request.clone({ setHeaders: { Authorization: `Bearer ${token}` } });

@@ -69,6 +69,17 @@ describe('authInterceptor', () => {
     controller.expectNone(`${AUTH}/refresh`);
   });
 
+  it('signs out from the refresh cookie alone: no bearer, and an expired token is not renewed just to log out', async () => {
+    const done = session.signOut();
+    const logout = controller.expectOne(`${AUTH}/logout`);
+    expect(logout.request.headers.has('Authorization')).toBe(false);
+    logout.flush({}, unauthorized);
+    await done;
+
+    controller.expectNone(`${AUTH}/refresh`);
+    expect(session.isSignedIn()).toBe(false);
+  });
+
   it('renews once on a 401, then retries the request with the new token', () => {
     let result: unknown;
     http.get(API).subscribe((r) => (result = r));
