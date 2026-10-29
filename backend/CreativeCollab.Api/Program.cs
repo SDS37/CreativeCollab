@@ -1,5 +1,3 @@
-using System.Text;
-using System.Threading.RateLimiting;
 using CreativeCollab.Api.Auth;
 using CreativeCollab.Api.Data;
 using CreativeCollab.Api.Endpoints;
@@ -8,8 +6,6 @@ using CreativeCollab.Api.Infrastructure;
 using CreativeCollab.Api.Services;
 using CreativeCollab.Api.Validation;
 using FluentValidation;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 
@@ -31,52 +27,7 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
     .AllowAnyHeader()
     .AllowAnyMethod()
     .AllowCredentials())); // SignalR needs credentials, so the origin list is explicit, never a wildcard
-builder.Services.AddOptions<JwtOptions>()
-    .Bind(builder.Configuration.GetSection("Jwt"))
-    .Validate(o => Encoding.UTF8.GetByteCount(o.Key) >= JwtOptions.MinimumKeyBytes,
-        $"Jwt:Key must be at least {JwtOptions.MinimumKeyBytes} bytes (256 bits). Set it with user-secrets or the Jwt__Key environment variable.")
-    .Validate(o => o.ClockSkew >= TimeSpan.Zero && o.ClockSkew <= JwtOptions.MaximumClockSkew,
-        $"Jwt:ClockSkew must be between zero and {JwtOptions.MaximumClockSkew.TotalSeconds} seconds.")
-    .ValidateOnStart();
-builder.Services.AddIdentityCore<AppUser>(options =>
-    {
-        options.Password.RequiredLength = 12; // length only, no composition rules
-        options.Password.RequireDigit = false;
-        options.Password.RequireLowercase = false;
-        options.Password.RequireUppercase = false;
-        options.Password.RequireNonAlphanumeric = false;
-        options.User.RequireUniqueEmail = true;
-        options.Lockout.AllowedForNewUsers = true;
-        options.Lockout.MaxFailedAccessAttempts = 5;
-        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
-    })
-    .AddRoles<IdentityRole>()
-    .AddEntityFrameworkStores<CreativeDbContext>();
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme).AddJwtBearer();
-builder.Services.AddSingleton<IConfigureOptions<JwtBearerOptions>, JwtBearerSetup>();
-builder.Services.AddAuthorization(options => options.AddCreativeCollabPolicies());
-builder.Services.AddSingleton<TokenService>();
-builder.Services.AddScoped<SessionService>();
-builder.Services.AddScoped<AccountService>();
-builder.Services.AddScoped<RoleService>();
-builder.Services.Configure<AuthRateLimitOptions>(builder.Configuration.GetSection("RateLimiting:Auth"));
-builder.Services.AddRateLimiter(options =>
-{
-    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
-    options.AddPolicy(AuthRateLimitOptions.PolicyName, http =>
-    {
-        var limit = http.RequestServices.GetRequiredService<IOptions<AuthRateLimitOptions>>().Value;
-        var client = http.Connection.RemoteIpAddress?.ToString() ?? "unknown";
-        // Key on the matched endpoint, not the raw path: routing ignores case and a trailing slash, so the path would not.
-        var endpoint = http.GetEndpoint()?.DisplayName ?? http.Request.Path.Value?.TrimEnd('/').ToLowerInvariant() ?? "unknown";
-        return RateLimitPartition.GetFixedWindowLimiter($"{endpoint}|{client}", _ => new FixedWindowRateLimiterOptions
-        {
-            PermitLimit = limit.PermitLimit,
-            Window = limit.Window,
-            QueueLimit = 0,
-        });
-    });
-});
+builder.Services.AddCreativeCollabAuth(builder.Configuration);
 builder.Services.AddSignalR();
 builder.Services.AddSingleton<PresenceTracker>();
 builder.Services.AddProblemDetails();
@@ -87,9 +38,7 @@ var app = builder.Build();
 
 app.UseExceptionHandler();
 app.UseCors();
-app.UseRateLimiter();
-app.UseAuthentication();
-app.UseAuthorization();
+app.UseCreativeCollabAuth();
 
 if (app.Environment.IsDevelopment())
     await app.InitializeDatabaseAsync();

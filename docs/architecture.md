@@ -222,7 +222,7 @@ While the form has a Draft, a `CreativeUpdated` event shows a non-blocking notic
 |---|---|---|
 | `Endpoints/` | Map routes, translate results, read and write the refresh cookie | Hold business rules (lockout, roles, who may register) |
 | `Services/` | Version check, save, broadcast, image check | Talk HTTP details or know about Angular |
-| `Auth/` | Accounts, roles, Sessions, tokens, Identity and JWT setup | Touch `HttpContext`, cookies or `Endpoints/` |
+| `Auth/` | Accounts, roles, Sessions, tokens, Identity, JWT, policy and rate-limit wiring (`AddCreativeCollabAuth`, `UseCreativeCollabAuth` in `AuthSetup.cs`) | Touch `HttpContext`, cookies or `Endpoints/` |
 | `Data/` | Persist and query Creatives | Validate input or broadcast |
 | `Hubs/` | Group membership and Presence | Save a Creative |
 | `Validation/` | Shape of a request | Decide a Conflict |
